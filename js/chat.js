@@ -1,0 +1,269 @@
+// ── CHAT ─────────────────────────────────────────────────────────────────────
+const Chat = (() => {
+  let _history = [];      // [{role,content}]
+  let _currentSpark = null;
+  let _wrongAttempts = 0;
+  let _lastTopic = null;
+  let _correctStreak = 0;
+
+  // ── Build system prompt ──────────────────────────────────────────────────
+  function systemPrompt() {
+    const s = State.get();
+    const mood = Mood.getTone();
+    const topic = App.currentTopic();
+    const mastered = s.masteredConcepts.slice(-5).join(', ') || 'none yet';
+
+    return `You are Chicha — a sharp, warm, slightly dry AI tutor specialising in ${topic}.
+
+PERSONALITY: You're like a brilliant friend who happens to know everything about data. You use vivid analogies, never textbook definitions. You find the student's confusion funny but never make them feel stupid. You never say "Great question!" or "Certainly!". You're direct.
+
+CURRENT MOOD TONE: ${mood}
+
+TEACHING STYLE:
+- Analogy first, syntax second — always
+- Use F1, cricket, Bollywood, IPL, or everyday Indian life analogies when relevant  
+- When explaining code, annotate it line by line
+- When the student gets it right, celebrate briefly then push harder
+- When wrong, don't just say "incorrect" — diagnose WHY they went wrong
+- After 3 wrong attempts on same concept, try a completely different angle
+- Drop in a practice question naturally mid-explanation (don't announce it as "here's a practice question")
+- Keep responses under 200 words unless showing code
+
+STUDENT CONTEXT:
+- Recently mastered: ${mastered}
+- XP: ${s.xp} | Streak: ${s.streak} days
+- Topic: ${topic}
+
+DETECT AHA MOMENTS: If the student's message suggests they just understood something (phrases like "ohh", "I get it now", "that makes sense", "so basically"), respond with extra warmth and log it mentally.
+
+DETECT STRUGGLE: If student says "I don't get it", "I'm confused", "what?", or repeats the same wrong answer — switch approach, don't repeat yourself.
+
+NEVER: give the answer directly when they're struggling. Nudge, don't solve.
+FORMAT: Use inline code with backticks. For SQL blocks use triple backticks with sql tag.`;
+  }
+
+  // ── Append message to UI ─────────────────────────────────────────────────
+  function appendMsg(role, html, isHTML = false) {
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `msg msg-${role}`;
+    const av = role === 'chicha' ? '✦' : 'S';
+    const meta = role === 'chicha' ? 'Chicha' : 'You';
+    div.innerHTML = `
+      <div class="msg-av">${av}</div>
+      <div>
+        <div class="msg-bubble">${isHTML ? html : escapeAndFormat(html)}</div>
+        <div class="msg-meta">${meta} · just now</div>
+      </div>
+    `;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return div;
+  }
+
+  function escapeAndFormat(text) {
+    // Escape HTML
+    text = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // Code blocks
+    text = text.replace(/```(?:sql)?\n?([\s\S]*?)```/g, (_, code) =>
+      `<div class="code-block">${highlightSQL(code.trim())}</div>`
+    );
+    // Inline code
+    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Bold
+    text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // Newlines
+    text = text.replace(/\n/g, '<br>');
+    return text;
+  }
+
+  function highlightSQL(code) {
+    const keywords = ['SELECT','FROM','WHERE','JOIN','INNER','LEFT','RIGHT','OUTER','ON','GROUP','BY','ORDER','HAVING','LIMIT','DISTINCT','AS','AND','OR','NOT','IN','IS','NULL','LIKE','BETWEEN','WITH','CASE','WHEN','THEN','ELSE','END','UNION','INSERT','UPDATE','DELETE','CREATE','TABLE','INDEX'];
+    const fns = ['COUNT','SUM','AVG','MIN','MAX','COALESCE','ISNULL','ROW_NUMBER','RANK','DENSE_RANK','LAG','LEAD','OVER','PARTITION','STRFTIME','UPPER','LOWER','LENGTH','TRIM','ROUND','CAST'];
+    let result = code.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+    result = result.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // Comments
+    result = result.replace(/(--[^\n]*)/g, '<span class="cm">$1</span>');
+    // Strings
+    result = result.replace(/'([^']*)'/g, '<span class="str">\'$1\'</span>');
+    // Keywords
+    keywords.forEach(kw => {
+      result = result.replace(new RegExp(`\\b${kw}\\b`, 'gi'), `<span class="kw">${kw}</span>`);
+    });
+    // Functions
+    fns.forEach(fn => {
+      result = result.replace(new RegExp(`\\b${fn}\\b`, 'gi'), `<span class="fn">${fn}</span>`);
+    });
+    return result;
+  }
+
+  function showTyping() {
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.id = 'typingIndicator';
+    div.className = 'msg msg-chicha';
+    div.innerHTML = `<div class="msg-av">✦</div><div><div class="msg-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function removeTyping() {
+    document.getElementById('typingIndicator')?.remove();
+  }
+
+  // ── Call Groq API ────────────────────────────────────────────────────────
+  async function callAI(userMsg) {
+    const key = Auth.getKey();
+    if (!key) throw new Error('No API key. Please log in again.');
+
+    _history.push({ role: 'user', content: userMsg });
+
+    const body = {
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 600,
+      messages: [
+        { role: 'system', content: systemPrompt() },
+        ..._history.slice(-12),
+      ],
+    };
+
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API error ${res.status}`);
+    }
+
+    const data = await res.json();
+    const reply = data.choices[0].message.content;
+    _history.push({ role: 'assistant', content: reply });
+    if (_history.length > 24) _history = _history.slice(-24);
+    return reply;
+  }
+
+  // ── Detect aha/struggle in user message ─────────────────────────────────
+  function detectMoment(userMsg, correct) {
+    const ahaSignals = ['ohh','oh i see','i get it','that makes sense','so basically','got it','makes sense now','clicked','understood'];
+    const struggleSignals = ["don't get","don't understand","confused","what?","huh","lost","i'm stuck","still don't"];
+    const lower = userMsg.toLowerCase();
+    const isAha = ahaSignals.some(s => lower.includes(s));
+    const isStruggle = struggleSignals.some(s => lower.includes(s));
+
+    if (isAha && _currentSpark) {
+      State.logAha(_currentSpark.concept || 'concept', userMsg.slice(0, 80));
+      Face.aha();
+    } else if (correct !== undefined) {
+      Mood.update(correct);
+      if (correct) {
+        _correctStreak++;
+        _wrongAttempts = 0;
+        Face.correct(_correctStreak);
+        State.addXP(20 + Math.min(_correctStreak * 5, 30));
+        State.logSession({ topic: App.currentTopic(), concept: _currentSpark?.concept, correct: true, msg: userMsg.slice(0,80) });
+        if (_currentSpark?.concept) State.masterConcept(_currentSpark.concept);
+        updateUI();
+      } else {
+        _correctStreak = 0;
+        _wrongAttempts++;
+        Face.wrong(_wrongAttempts);
+        if (_currentSpark) State.logStruggle(_currentSpark.concept || 'concept', userMsg.slice(0, 80));
+        State.logSession({ topic: App.currentTopic(), concept: _currentSpark?.concept, correct: false, msg: userMsg.slice(0,80) });
+      }
+    }
+  }
+
+  function updateUI() {
+    const s = State.get();
+    const streakEl = document.getElementById('psStreak');
+    if (streakEl) streakEl.textContent = s.streak > 1 ? `🔥 ${s.streak}` : '';
+    const xpEl = document.getElementById('psXp');
+    if (xpEl) xpEl.textContent = `${s.xp} XP`;
+    const fill = document.getElementById('psFill');
+    if (fill) {
+      const topic = App.currentTopic();
+      const sections = CURRICULUM[topic] || [];
+      const total = sections.flatMap(s=>s.concepts).length;
+      const done = s.masteredConcepts.filter(c => sections.flatMap(s=>s.concepts).includes(c)).length;
+      fill.style.width = `${Math.round((done/total)*100)}%`;
+    }
+  }
+
+  return {
+    init() {
+      _history = [];
+      _currentSpark = null;
+      _wrongAttempts = 0;
+      _correctStreak = 0;
+      updateUI();
+    },
+
+    async startSpark() {
+      const spark = _currentSpark;
+      if (!spark) return;
+      document.getElementById('sparkCard').style.display = 'none';
+      document.getElementById('messages').innerHTML = '';
+      const msg = `Let's learn about **${spark.concept || spark.title}**. Start by giving me the analogy approach.`;
+      showTyping();
+      try {
+        const reply = await callAI(msg);
+        removeTyping();
+        appendMsg('chicha', reply);
+      } catch(e) {
+        removeTyping();
+        appendMsg('chicha', `Hmm, can't reach my brain right now: ${e.message}`);
+      }
+    },
+
+    surpriseSpark() {
+      const topic = App.currentTopic();
+      _currentSpark = getSparkForTopic(topic);
+      document.getElementById('sparkTitle').textContent = _currentSpark.title;
+      document.getElementById('sparkBody').textContent = _currentSpark.analogy;
+      document.getElementById('sparkConcept').textContent = _currentSpark.concept || '';
+    },
+
+    setSpark(spark) {
+      _currentSpark = spark;
+      document.getElementById('sparkTitle').textContent = spark.title;
+      document.getElementById('sparkBody').textContent = spark.analogy;
+      document.getElementById('sparkConcept').textContent = spark.concept || '';
+      document.getElementById('sparkCard').style.display = '';
+      document.getElementById('messages').innerHTML = '';
+    },
+
+    async send() {
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      input.style.height = 'auto';
+
+      appendMsg('user', text);
+      showTyping();
+
+      try {
+        const reply = await callAI(text);
+        removeTyping();
+        appendMsg('chicha', reply);
+        // Detect signals
+        detectMoment(text, undefined);
+      } catch(e) {
+        removeTyping();
+        appendMsg('chicha', `Something went wrong: ${e.message}. Check your API key in settings.`);
+      }
+    },
+
+    loadSpark(topic) {
+      _currentSpark = getSparkForTopic(topic);
+      document.getElementById('sparkTitle').textContent = _currentSpark.title;
+      document.getElementById('sparkBody').textContent = _currentSpark.analogy;
+      document.getElementById('sparkConcept').textContent = _currentSpark.concept || '';
+      const topicEl = document.getElementById('psTopic');
+      if (topicEl) topicEl.textContent = `${topic} · ${_currentSpark.concept || ''}`;
+    },
+  };
+})();
