@@ -8,6 +8,18 @@ const Chat = (() => {
   let _wrongAttempts = 0;
   let _correctStreak = 0;
   let _mode          = 'chat'; // 'chat' | 'spark'
+  let _practiceAsked = false;  // true after first practice question asked
+  let _masteredThisSession = false; // prevent double-mastering same concept
+
+  // ── Theory concepts — no SQL syntax ──────────────────────────────────────
+  const THEORY_CONCEPTS = [
+    'What is a Database', 'What is a Table', 'Data types',
+    'What is Power BI', 'Connecting data sources', 'Basic visuals',
+    'Connecting data', 'Dimensions vs Measures', 'Basic chart types',
+  ];
+  function isTheory(concept) {
+    return THEORY_CONCEPTS.some(t => concept.toLowerCase().includes(t.toLowerCase()));
+  }
 
   // ── Persistence ──────────────────────────────────────────────────────────
   function saveHistory() {
@@ -38,65 +50,67 @@ const Chat = (() => {
     return false;
   }
 
-  // ── System prompt ────────────────────────────────────────────────────────
+  // ── System prompt ─────────────────────────────────────────────────────────
   function systemPrompt() {
     const s       = State.get();
     const mood    = Mood.getTone();
     const topic   = App.currentTopic();
     const mastered = s.masteredConcepts.slice(-5).join(', ') || 'none yet';
+    const concept  = _currentSpark?.concept || '';
+    const theory   = concept ? isTheory(concept) : false;
 
     return `You are Chicha — a sharp, warm, slightly dry AI tutor specialising in ${topic}.
 
-PERSONALITY: You're like a brilliant friend who knows everything about data. You use vivid analogies, never textbook definitions. You find the student's confusion funny but never make them feel stupid. Never say "Great question!" or "Certainly!". Be direct.
+PERSONALITY: Brilliant friend who knows data. Vivid analogies, never textbook definitions. Never say "Great question!" or "Certainly!". Be direct. Max 220 words unless showing code.
 
-CURRENT MOOD TONE: ${mood}
+MOOD TONE: ${mood}
 
-TEACHING STYLE:
-- Analogy first, syntax second — always
-- Use F1, cricket, Bollywood, IPL, or everyday Indian life analogies
-- Annotate every line of code you show
-- When student is right, celebrate briefly then ask a HARDER follow-up question on the SAME concept
-- When wrong, diagnose WHY before explaining
-- Keep responses under 220 words unless showing code
+STUDENT: XP=${s.xp} | Streak=${s.streak} | Mastered recently: ${mastered}
 
-STUDENT CONTEXT:
-- Recently mastered: ${mastered}
-- XP: ${s.xp} | Streak: ${s.streak} days | Topic: ${topic}
+CURRENT CONCEPT: "${concept}" ${theory ? '(THEORY — no SQL code)' : '(SQL command)'}
 
-PRACTICE FLOW — CRITICAL:
-When student says "yes", "sure", "ok", "ready", "let's go" after being asked "Ready to try one yourself?":
-- Give ONE practice question on the CURRENT concept being taught
-- Do NOT move to a new concept
-- Do NOT say [CORRECT] yet
-- Wait for their actual answer
+━━━ PRACTICE FLOW ━━━
+When student says "yes/sure/ok/ready/let's go" after "Ready to try one yourself?":
+${theory
+  ? `- Give ONE multiple choice question (MCQ) about "${concept}"
+- Format EXACTLY like this:
+  Question: [your question here]
+  (a) [option]
+  (b) [option]  
+  (c) [option]
+  (d) [option]
+- Make one option clearly correct, others plausible but wrong
+- Do NOT say [CORRECT] yet — wait for their answer`
+  : `- Give ONE specific SQL writing task about "${concept}"
+- Example: "Write a query to [do something with Indian data]"
+- Do NOT say [CORRECT] yet — wait for their actual SQL`
+}
 
-DETECT AHA MOMENTS: phrases like "ohh", "I get it", "that makes sense", "so basically" → respond with warmth, then say exactly: [AHA]
+━━━ SIGNAL RULES ━━━
+[AHA] → student says "ohh/I get it/that makes sense/so basically/clicked"
+[CORRECT] → ONLY when:
+  ${theory
+    ? '- Student picks the correct MCQ option (a/b/c/d) AND it is actually correct'
+    : '- Student writes SQL that correctly solves the task (not just "yes/sure")'}
+[WRONG] → student gives wrong MCQ answer OR incorrect SQL — diagnose WHY, do NOT give answer
 
-DETECT CORRECT ANSWER: ONLY when student writes actual SQL code or gives a specific technical answer that is correct → say exactly: [CORRECT] then celebrate briefly. Simple "yes/sure/ok/ready" is NOT a correct answer.
+━━━ DONT KNOW RULE ━━━
+If "idk/no idea/not sure/give up/😭/🤷/:(":
+1. One sentence empathy
+2. One diagnostic question — WHERE are they stuck?
+3. STOP. Do not explain until they answer.
+4. NEVER give the answer directly.
 
-DETECT WRONG ANSWER: If the student writes SQL code or a technical answer that is incorrect → say exactly: [WRONG] then diagnose why without giving the full answer.
-
-MASTERY RULE: Only mark [CORRECT] after the student successfully answers at least ONE practice question with actual SQL or a clear technical explanation. NOT before.
-
-CRITICAL — "I DON'T KNOW" RULE:
-If student says "I don't know", "idk", "no idea", "not sure", "I don't think so", "I give up", ":(", "🤷":
-1. ONE sentence of empathy
-2. Ask ONE diagnostic question to find WHERE they're stuck
-3. STOP — do not explain further until they answer
-4. NEVER give the full answer
-
-NEVER give the answer when they're struggling. Nudge, don't solve.
-FORMAT: Inline code with backticks. SQL blocks with triple backticks.`;
+FORMAT: Backticks for inline code. Triple backticks for SQL blocks.`;
   }
 
-  // ── UI helpers ───────────────────────────────────────────────────────────
+  // ── UI helpers ────────────────────────────────────────────────────────────
   function appendMsg(role, text) {
     const msgs = document.getElementById('messages');
     const div  = document.createElement('div');
     div.className = `msg msg-${role}`;
     const av   = role === 'chicha' ? '✦' : 'S';
     const meta = role === 'chicha' ? 'Chicha' : 'You';
-    // Strip signal tokens from display
     const display = text.replace(/\[(AHA|CORRECT|WRONG)\]/g, '').trim();
     div.innerHTML = `
       <div class="msg-av">${av}</div>
@@ -111,7 +125,7 @@ FORMAT: Inline code with backticks. SQL blocks with triple backticks.`;
 
   function escapeAndFormat(text) {
     text = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    text = text.replace(/```(?:sql)?\n?([\s\S]*?)```/g, (_, code) =>
+    text = text.replace(/```(?:sql)?\n?([\s\S]*?)```/g, (_,code) =>
       `<div class="code-block">${highlightSQL(code.trim())}</div>`);
     text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
     text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -120,14 +134,14 @@ FORMAT: Inline code with backticks. SQL blocks with triple backticks.`;
   }
 
   function highlightSQL(code) {
-    const kws  = ['SELECT','FROM','WHERE','JOIN','INNER','LEFT','RIGHT','OUTER','ON','GROUP','BY','ORDER','HAVING','LIMIT','DISTINCT','AS','AND','OR','NOT','IN','IS','NULL','LIKE','BETWEEN','WITH','CASE','WHEN','THEN','ELSE','END','UNION','INSERT','UPDATE','DELETE','CREATE','TABLE','INDEX'];
-    const fns  = ['COUNT','SUM','AVG','MIN','MAX','COALESCE','ISNULL','ROW_NUMBER','RANK','DENSE_RANK','LAG','LEAD','OVER','PARTITION','STRFTIME','UPPER','LOWER','LENGTH','TRIM','ROUND','CAST'];
+    const kws = ['SELECT','FROM','WHERE','JOIN','INNER','LEFT','RIGHT','OUTER','ON','GROUP','BY','ORDER','HAVING','LIMIT','DISTINCT','AS','AND','OR','NOT','IN','IS','NULL','LIKE','BETWEEN','WITH','CASE','WHEN','THEN','ELSE','END','UNION','INSERT','UPDATE','DELETE','CREATE','TABLE','DATABASE','INDEX','DROP','ALTER','INTO','VALUES','SET','PRIMARY','KEY','VARCHAR','INT','DATE','DECIMAL'];
+    const fns = ['COUNT','SUM','AVG','MIN','MAX','COALESCE','ISNULL','ROW_NUMBER','RANK','DENSE_RANK','LAG','LEAD','OVER','PARTITION','STRFTIME','UPPER','LOWER','LENGTH','TRIM','ROUND','CAST'];
     let r = code;
     r = r.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    r = r.replace(/(--[^\n]*)/g, '<span class="cm">$1</span>');
-    r = r.replace(/'([^']*)'/g, "<span class='str'>'$1'</span>");
-    kws.forEach(k => { r = r.replace(new RegExp(`\\b${k}\\b`,'g'), `<span class="kw">${k}</span>`); });
-    fns.forEach(f => { r = r.replace(new RegExp(`\\b${f}\\b`,'g'), `<span class="fn">${f}</span>`); });
+    r = r.replace(/(--[^\n]*)/g,'<span class="cm">$1</span>');
+    r = r.replace(/'([^']*)'/g,"<span class='str'>'$1'</span>");
+    kws.forEach(k => { r = r.replace(new RegExp(`\\b${k}\\b`,'g'),`<span class="kw">${k}</span>`); });
+    fns.forEach(f => { r = r.replace(new RegExp(`\\b${f}\\b`,'g'),`<span class="fn">${f}</span>`); });
     return r;
   }
 
@@ -142,7 +156,7 @@ FORMAT: Inline code with backticks. SQL blocks with triple backticks.`;
   }
   function removeTyping() { document.getElementById('typingIndicator')?.remove(); }
 
-  // ── Groq API ─────────────────────────────────────────────────────────────
+  // ── API call ──────────────────────────────────────────────────────────────
   async function callAI(userMsg) {
     const key = Auth.getKey();
     if (!key) throw new Error('No API key. Please log in again.');
@@ -170,71 +184,105 @@ FORMAT: Inline code with backticks. SQL blocks with triple backticks.`;
     return reply;
   }
 
-  // ── Signal detection — parse [CORRECT] [WRONG] [AHA] from reply ──────────
+  // ── Signal processing ─────────────────────────────────────────────────────
   function processSignals(reply) {
-    if (reply.includes('[CORRECT]')) {
+    if (reply.includes('[CORRECT]') && !_masteredThisSession) {
+      _masteredThisSession = true;
       _correctStreak++;
       _wrongAttempts = 0;
       Mood.update(true);
       Face.correct(_correctStreak);
-      State.addXP(20 + Math.min(_correctStreak * 5, 30));
+      const xpEarned = 20 + Math.min(_correctStreak * 5, 30);
+      State.addXP(xpEarned);
       if (_currentSpark?.concept) State.masterConcept(_currentSpark.concept);
       State.logSession({ topic: App.currentTopic(), concept: _currentSpark?.concept, correct: true });
       updateProgressUI();
+      // Show advance button after short delay
+      setTimeout(() => showAdvanceButton(), 1200);
     } else if (reply.includes('[WRONG]')) {
       _correctStreak = 0;
       _wrongAttempts++;
       Mood.update(false);
       Face.wrong(_wrongAttempts);
       State.logSession({ topic: App.currentTopic(), concept: _currentSpark?.concept, correct: false });
+      if (_currentSpark?.concept) State.logStruggle(_currentSpark.concept, reply.slice(0,80));
     } else if (reply.includes('[AHA]')) {
-      if (_currentSpark) State.logAha(_currentSpark.concept || 'concept', reply.slice(0,80));
+      if (_currentSpark?.concept) State.logAha(_currentSpark.concept, reply.slice(0,80));
       Face.aha();
     }
   }
 
+  // ── Show "Next concept" button after mastery ──────────────────────────────
+  function showAdvanceButton() {
+    const msgs = document.getElementById('messages');
+    if (!msgs) return;
+    const topic    = App.currentTopic();
+    const sections = CURRICULUM[topic] || [];
+    const all      = sections.flatMap(s => s.concepts);
+    const mastered = State.get().masteredConcepts;
+    const next     = all.find(c => !mastered.includes(c));
+
+    const div = document.createElement('div');
+    div.className = 'msg msg-chicha';
+    div.id = 'advanceBtn';
+    div.innerHTML = `
+      <div class="msg-av">✦</div>
+      <div>
+        <div class="msg-bubble" style="background:rgba(52,211,153,0.08);border-color:rgba(52,211,153,0.25)">
+          <div style="color:#34d399;font-weight:700;margin-bottom:8px">✅ Concept mastered!</div>
+          ${next
+            ? `<div style="font-size:13px;color:#aaa;margin-bottom:12px">Next up: <strong style="color:#e8e8f0">${next}</strong></div>
+               <button onclick="Chat.advanceToNext()" style="background:#34d399;color:#0a0a0a;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Continue → ${next}</button>`
+            : `<div style="font-size:13px;color:#aaa">🏆 You've mastered all concepts in this topic!</div>`
+          }
+        </div>
+      </div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // ── Progress UI update ────────────────────────────────────────────────────
   function updateProgressUI() {
     const s = State.get();
-    const xpEl = document.getElementById('psXp');
-    const stEl = document.getElementById('psStreak');
-    const fill = document.getElementById('psFill');
+    const xpEl  = document.getElementById('psXp');
+    const stEl  = document.getElementById('psStreak');
+    const fill  = document.getElementById('psFill');
+    const topic = App.currentTopic();
     if (xpEl) xpEl.textContent = `${s.xp} XP`;
     if (stEl) stEl.textContent = s.streak > 0 ? `🔥 ${s.streak}` : '';
     if (fill) {
-      const topic    = App.currentTopic();
       const sections = CURRICULUM[topic] || [];
       const total    = sections.flatMap(sc => sc.concepts).length;
       if (total > 0) {
-        const done = s.masteredConcepts.filter(c => sections.flatMap(sc => sc.concepts).includes(c)).length;
-        fill.style.width = `${Math.round((done / total) * 100)}%`;
+        const done = s.masteredConcepts.filter(c =>
+          sections.flatMap(sc => sc.concepts).includes(c)).length;
+        fill.style.width = `${Math.round((done/total)*100)}%`;
       }
     }
     App.syncSidebar();
   }
 
-  // ── Public API ───────────────────────────────────────────────────────────
+  // ── Public API ────────────────────────────────────────────────────────────
   return {
     init() {
-      _history       = loadHistory();
-      _currentSpark  = null;
-      _wrongAttempts = 0;
-      _correctStreak = 0;
-      _mode          = 'chat';
+      _history             = loadHistory();
+      _currentSpark        = null;
+      _wrongAttempts       = 0;
+      _correctStreak       = 0;
+      _practiceAsked       = false;
+      _masteredThisSession = false;
+      _mode                = 'chat';
       updateProgressUI();
       const restored = restoreMsgs();
-      // Spark card always hidden on init
       const sparkCard = document.getElementById('sparkCard');
       if (sparkCard) sparkCard.style.display = 'none';
       if (!restored) {
-        // Fresh start — show welcome
         const welcome = document.getElementById('welcomeState');
         if (welcome) welcome.style.display = 'flex';
       }
     },
 
-    // ── TODAY'S SPARK flow ─────────────────────────────────────────────────
     showSpark() {
-      // Show the spark card, hide welcome
       const sparkCard = document.getElementById('sparkCard');
       const welcome   = document.getElementById('welcomeState');
       if (sparkCard) sparkCard.style.display = '';
@@ -247,101 +295,89 @@ FORMAT: Inline code with backticks. SQL blocks with triple backticks.`;
     async startSpark() {
       const spark = _currentSpark;
       if (!spark) return;
-      _mode = 'spark';
-      document.getElementById('sparkCard').style.display   = 'none';
-      document.getElementById('messages').innerHTML        = '';
+      _mode                = 'spark';
+      _practiceAsked       = false;
+      _masteredThisSession = false;
+      document.getElementById('sparkCard').style.display    = 'none';
+      document.getElementById('messages').innerHTML         = '';
       document.getElementById('welcomeState').style.display = 'none';
       document.getElementById('backToSparkBar').style.visibility = 'visible';
       document.getElementById('userInput').placeholder = 'Reply to Chicha…';
       App.collapseSpark();
 
-      // Strict 3-step teach prompt — locked to exact concept
       const concept = spark.concept || spark.title;
+      const theory  = isTheory(concept);
 
-      // Pure theory concepts — no SQL syntax exists for these
-      const theoryOnly = [
-        'What is a Database', 'What is a Table', 'Data types',
-        'What is Power BI', 'Connecting data sources', 'Basic visuals',
-        'Connecting data', 'Dimensions vs Measures', 'Basic chart types',
-      ];
-      const isTheory = theoryOnly.some(t => concept.toLowerCase().includes(t.toLowerCase()));
+      const msg = theory
+        ? `Teach ONLY: "${concept}" — THEORY, no SQL code.
 
-      const msg = isTheory
-        ? `You are teaching ONLY this concept: "${concept}"
-
-This is a THEORY concept — there is NO SQL syntax for it. Do NOT show any code.
-
-Follow this EXACT structure:
-
+Structure:
 **Step 1 — What is it?**
-Explain "${concept}" in plain English using one vivid analogy from cricket, IPL, Bollywood, or Indian daily life. Maximum 3 sentences.
+One cricket/IPL/Bollywood analogy. Max 3 sentences.
 
 **Step 2 — Why does it matter?**
-Explain in 2 sentences why a beginner needs to understand this before writing any SQL.
+2 sentences. Why must a beginner know this before SQL?
 
-**Step 3 — Real world example:**
-Give one real-world example of where "${concept}" is used in India (Swiggy, IRCTC, IPL, Zomato, etc.). No code. Just a concrete scenario.
+**Step 3 — Real world:**
+One Indian app example (Swiggy/IRCTC/Zomato/IPL). No code.
 
 End with exactly: "Ready to try one yourself? Just say yes."
-Do NOT show any SQL. Do NOT quiz yet.`
+Do NOT show any SQL or code.`
 
-        : `You are teaching ONLY this SQL concept: "${concept}"
+        : `Teach ONLY: "${concept}" — SQL command.
 
-STRICT RULES:
-- Do NOT teach any other concept even if related
-- ONLY show syntax for "${concept}" — nothing else
-- Stay 100% focused on "${concept}"
-
-Follow this EXACT 3-step structure:
+STRICT: Only syntax for "${concept}". Nothing else.
 
 **Step 1 — Analogy:**
-Explain "${concept}" using one vivid analogy from cricket, IPL, Bollywood, or Indian daily life. Zero code. Maximum 3 sentences.
+Cricket/IPL/Bollywood analogy. Zero code. Max 3 sentences.
 
 **Step 2 — Syntax:**
-Show ONLY the syntax for "${concept}" in a single SQL code block. After the block, explain each line in one short sentence.
+ONE code block for "${concept}" only. Explain each line in one sentence.
 
 **Step 3 — Example:**
-Show ONE short example of "${concept}" in action with realistic Indian data (players, movies, orders). Keep it to 3-4 lines.
+ONE example with Indian data (3-4 lines max).
 
-End with exactly: "Ready to try one yourself? Just say yes."
-Do NOT quiz. Do NOT ask questions. Teach only.`;
+End with exactly: "Ready to try one yourself? Just say yes."`;
 
       showTyping();
       try {
         const reply = await callAI(msg);
         removeTyping();
         appendMsg('chicha', reply);
-        // Inject visual if available for this concept
+        _practiceAsked = false;
         Visualizer.tryInject(concept);
         saveHistory(); saveMsgs();
       } catch(e) {
         removeTyping();
-        appendMsg('chicha', `Can't reach my brain right now: ${e.message}`);
+        appendMsg('chicha', `Can't reach Chicha right now: ${e.message}`);
       }
     },
 
     surpriseSpark() {
       const topic   = App.currentTopic();
-      _currentSpark = getSparkForTopic(topic, true); // random from unmastered
-      document.getElementById('sparkTitle').textContent   = _currentSpark.title;
-      document.getElementById('sparkBody').textContent    = _currentSpark.analogy;
-      document.getElementById('sparkConcept').textContent = _currentSpark.concept || '';
-      const topicEl = document.getElementById('psTopic');
-      if (topicEl) topicEl.textContent = `${topic} · ${_currentSpark.concept || ''}`;
+      _currentSpark = getSparkForTopic(topic, true);
+      const el = {
+        title:   document.getElementById('sparkTitle'),
+        body:    document.getElementById('sparkBody'),
+        concept: document.getElementById('sparkConcept'),
+        topic:   document.getElementById('psTopic'),
+      };
+      if (el.title)   el.title.textContent   = _currentSpark.title;
+      if (el.body)    el.body.textContent     = _currentSpark.analogy;
+      if (el.concept) el.concept.textContent  = _currentSpark.concept || '';
+      if (el.topic)   el.topic.textContent    = `${topic} · ${_currentSpark.concept || ''}`;
       Chat.showSpark();
     },
 
-    // ── FREE CHAT flow ─────────────────────────────────────────────────────
     openChat() {
       _mode = 'chat';
       const sparkCard = document.getElementById('sparkCard');
       const welcome   = document.getElementById('welcomeState');
       const backBar   = document.getElementById('backToSparkBar');
-      if (sparkCard) sparkCard.style.display = 'none';
-      if (welcome)   welcome.style.display   = 'none';
+      if (sparkCard) sparkCard.style.display  = 'none';
+      if (welcome)   welcome.style.display    = 'none';
       if (backBar)   backBar.style.visibility = 'hidden';
       document.getElementById('userInput').placeholder = 'Ask Chicha anything…';
-      // If no messages yet, show chat-ready state
       const msgs = document.getElementById('messages');
       if (msgs && msgs.children.length === 0) {
         const chatReady = document.getElementById('chatReadyState');
@@ -357,10 +393,14 @@ Do NOT quiz. Do NOT ask questions. Teach only.`;
       input.value = '';
       input.style.height = 'auto';
 
-      // Hide all placeholder states
-      document.getElementById('welcomeState').style.display  = 'none';
+      document.getElementById('welcomeState').style.display = 'none';
       const chatReady = document.getElementById('chatReadyState');
       if (chatReady) chatReady.style.display = 'none';
+
+      // Mark that student replied to "Ready?" — next Chicha response should give MCQ/task
+      if (!_practiceAsked && /^(yes|sure|ok|okay|ready|let'?s go|yep|yeah|go)$/i.test(text.trim())) {
+        _practiceAsked = true;
+      }
 
       appendMsg('user', text);
       showTyping();
@@ -373,8 +413,41 @@ Do NOT quiz. Do NOT ask questions. Teach only.`;
         saveHistory(); saveMsgs();
       } catch(e) {
         removeTyping();
-        appendMsg('chicha', `Something went wrong: ${e.message}. Check your API key.`);
+        appendMsg('chicha', `Something went wrong: ${e.message}`);
       }
+    },
+
+    // Advance to next concept after mastery
+    advanceToNext() {
+      const topic    = App.currentTopic();
+      const sections = CURRICULUM[topic] || [];
+      const all      = sections.flatMap(s => s.concepts);
+      const mastered = State.get().masteredConcepts;
+      const next     = all.find(c => !mastered.includes(c));
+      if (!next) return;
+
+      // Remove advance button
+      document.getElementById('advanceBtn')?.remove();
+
+      // Load next spark
+      _currentSpark        = getSparkForTopic(topic);
+      _masteredThisSession = false;
+      _practiceAsked       = false;
+
+      // Update spark card
+      const el = {
+        title:   document.getElementById('sparkTitle'),
+        body:    document.getElementById('sparkBody'),
+        concept: document.getElementById('sparkConcept'),
+        topic:   document.getElementById('psTopic'),
+      };
+      if (el.title)   el.title.textContent   = _currentSpark.title;
+      if (el.body)    el.body.textContent     = _currentSpark.analogy;
+      if (el.concept) el.concept.textContent  = _currentSpark.concept || '';
+      if (el.topic)   el.topic.textContent    = `${topic} · ${_currentSpark.concept || ''}`;
+
+      // Start teaching next concept immediately
+      Chat.startSpark();
     },
 
     loadSpark(topic) {
@@ -392,7 +465,9 @@ Do NOT quiz. Do NOT ask questions. Teach only.`;
     },
 
     backToSpark() {
-      _history = [];
+      _history             = [];
+      _masteredThisSession = false;
+      _practiceAsked       = false;
       sessionStorage.removeItem(HIST_KEY);
       sessionStorage.removeItem(MSG_KEY);
       document.getElementById('messages').innerHTML = '';
