@@ -59,35 +59,29 @@ const App = (() => {
       if (name === 'notes') Notes.render();
     },
 
-    toggleSpark() {
-      const collapsed = document.getElementById('sbSparkCollapsed');
-      const expanded  = document.getElementById('sbSparkExpanded');
-      if (!collapsed || !expanded) return;
-      const isCollapsed = collapsed.style.display !== 'none';
-      collapsed.style.display = isCollapsed ? 'none' : 'flex';
-      expanded.style.display  = isCollapsed ? 'block' : 'none';
+    scrollToSpark() {
+      // If in chat with messages, go back to spark first
+      const sparkCard = document.getElementById('sparkCard');
+      if (sparkCard && sparkCard.style.display === 'none') {
+        App.backToSpark();
+      } else {
+        // Scroll main panel to top where spark card is
+        const panel = document.getElementById('chatPanel');
+        if (panel) panel.scrollTop = 0;
+        App.showPanel('chat');
+      }
     },
 
-    collapseSpark() {
-      const collapsed = document.getElementById('sbSparkCollapsed');
-      const expanded  = document.getElementById('sbSparkExpanded');
-      if (collapsed) collapsed.style.display = 'flex';
-      if (expanded)  expanded.style.display  = 'none';
-    },
+    collapseSpark() { /* no-op now, kept for compatibility */ },
 
     backToSpark() {
-      // Clear chat
       document.getElementById('messages').innerHTML = '';
       sessionStorage.removeItem('chicha_chat_msgs');
       sessionStorage.removeItem('chicha_chat_history');
-      // Show spark card again
       const sparkCard = document.getElementById('sparkCard');
       if (sparkCard) sparkCard.style.display = '';
-      // Hide back button
       const backBar = document.getElementById('backToSparkBar');
-      if (backBar) backBar.style.display = 'none';
-      // Collapse sidebar spark
-      App.collapseSpark();
+      if (backBar) backBar.style.visibility = 'hidden';
     },
 
     toggleMenu() {
