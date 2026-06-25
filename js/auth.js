@@ -1,6 +1,6 @@
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 const Auth = (() => {
-  const STORE_KEY = 'chicha_auth';
+  const STORE_KEY = 'chicha_auth'
 
   function getStore() {
     try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
