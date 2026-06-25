@@ -1,10 +1,47 @@
 // ── CHAT ─────────────────────────────────────────────────────────────────────
 const Chat = (() => {
-  let _history = [];      // [{role,content}]
+  const HIST_KEY = 'chicha_chat_history';
+  const MSG_KEY  = 'chicha_chat_msgs';
+
+  let _history = [];
   let _currentSpark = null;
   let _wrongAttempts = 0;
   let _lastTopic = null;
   let _correctStreak = 0;
+
+  function saveHistory() {
+    try {
+      sessionStorage.setItem(HIST_KEY, JSON.stringify(_history.slice(-24)));
+    } catch(e) {}
+  }
+
+  function loadHistory() {
+    try {
+      return JSON.parse(sessionStorage.getItem(HIST_KEY) || '[]');
+    } catch { return []; }
+  }
+
+  function saveMsgs() {
+    try {
+      const msgs = document.getElementById('messages');
+      if (msgs) sessionStorage.setItem(MSG_KEY, msgs.innerHTML);
+    } catch(e) {}
+  }
+
+  function restoreMsgs() {
+    try {
+      const saved = sessionStorage.getItem(MSG_KEY);
+      const msgs  = document.getElementById('messages');
+      if (saved && msgs && saved.length > 10) {
+        msgs.innerHTML = saved;
+        msgs.scrollTop = msgs.scrollHeight;
+        // Hide spark card if there were messages
+        document.getElementById('sparkCard').style.display = 'none';
+        return true;
+      }
+    } catch(e) {}
+    return false;
+  }
 
   // ── Build system prompt ──────────────────────────────────────────────────
   function systemPrompt() {
@@ -211,11 +248,17 @@ FORMAT: Use inline code with backticks. For SQL blocks use triple backticks with
 
   return {
     init() {
-      _history = [];
+      _history = loadHistory();
       _currentSpark = null;
       _wrongAttempts = 0;
       _correctStreak = 0;
       updateUI();
+      // Restore previous conversation if exists
+      const restored = restoreMsgs();
+      if (!restored) {
+        // Fresh start — show spark card
+        document.getElementById('sparkCard').style.display = '';
+      }
     },
 
     async startSpark() {
@@ -229,6 +272,8 @@ FORMAT: Use inline code with backticks. For SQL blocks use triple backticks with
         const reply = await callAI(msg);
         removeTyping();
         appendMsg('chicha', reply);
+        saveHistory();
+        saveMsgs();
       } catch(e) {
         removeTyping();
         appendMsg('chicha', `Hmm, can't reach my brain right now: ${e.message}`);
@@ -266,6 +311,8 @@ FORMAT: Use inline code with backticks. For SQL blocks use triple backticks with
         const reply = await callAI(text);
         removeTyping();
         appendMsg('chicha', reply);
+        saveHistory();
+        saveMsgs();
         // Detect signals
         detectMoment(text, undefined);
       } catch(e) {
