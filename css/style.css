@@ -685,3 +685,9 @@ code { font-family: var(--mono); color: #a78bfa; font-size: 0.9em; }
 .viz-btn:disabled { opacity: 0.3; cursor: default; }
 .viz-btn-next { background: rgba(139,92,246,0.2); }
 .viz-counter { font-family: var(--mono); font-size: 10px; color: #555; }
+
+/* ── INNER MONOLOGUE ─────────────────────────────────────────────────────────── */
+.monologue-msg .msg-bubble {
+  font-size: 12px !important;
+  line-height: 1.6;
+}
