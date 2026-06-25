@@ -238,10 +238,10 @@
 
     <!-- Chat panel -->
     <div class="panel active" id="chatPanel">
-      <!-- Back to spark button — shows after spark is dismissed -->
-      <div id="backToSparkBar" style="display:none;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--surface)">
-        <button onclick="App.backToSpark()" style="background:none;border:1px solid var(--border2);color:var(--muted);padding:5px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:var(--mono);">
-          ← Back to today's spark
+      <!-- Back to spark button — always visible when in chat after spark started -->
+      <div id="backToSparkBar" style="display:none;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10;">
+        <button onclick="App.backToSpark()" style="background:var(--violet-lo);border:1px solid var(--border2);color:var(--violet);padding:6px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:var(--mono);letter-spacing:1px;">
+          ← TODAY'S SPARK
         </button>
       </div>
       <!-- Spark card -->
