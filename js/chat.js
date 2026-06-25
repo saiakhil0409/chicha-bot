@@ -257,12 +257,40 @@ FORMAT: Inline code with backticks. SQL blocks with triple backticks.`;
 
       // Strict 3-step teach prompt — locked to exact concept
       const concept = spark.concept || spark.title;
-      const msg = `You are teaching ONLY this one concept: "${concept}"
+
+      // Pure theory concepts — no SQL syntax exists for these
+      const theoryOnly = [
+        'What is a Database', 'What is a Table', 'Data types',
+        'What is Power BI', 'Connecting data sources', 'Basic visuals',
+        'Connecting data', 'Dimensions vs Measures', 'Basic chart types',
+      ];
+      const isTheory = theoryOnly.some(t => concept.toLowerCase().includes(t.toLowerCase()));
+
+      const msg = isTheory
+        ? `You are teaching ONLY this concept: "${concept}"
+
+This is a THEORY concept — there is NO SQL syntax for it. Do NOT show any code.
+
+Follow this EXACT structure:
+
+**Step 1 — What is it?**
+Explain "${concept}" in plain English using one vivid analogy from cricket, IPL, Bollywood, or Indian daily life. Maximum 3 sentences.
+
+**Step 2 — Why does it matter?**
+Explain in 2 sentences why a beginner needs to understand this before writing any SQL.
+
+**Step 3 — Real world example:**
+Give one real-world example of where "${concept}" is used in India (Swiggy, IRCTC, IPL, Zomato, etc.). No code. Just a concrete scenario.
+
+End with exactly: "Ready to try one yourself? Just say yes."
+Do NOT show any SQL. Do NOT quiz yet.`
+
+        : `You are teaching ONLY this SQL concept: "${concept}"
 
 STRICT RULES:
-- Do NOT teach any other concept, even if related
-- Do NOT show syntax for concepts not yet covered
-- Stay 100% focused on "${concept}" only
+- Do NOT teach any other concept even if related
+- ONLY show syntax for "${concept}" — nothing else
+- Stay 100% focused on "${concept}"
 
 Follow this EXACT 3-step structure:
 
@@ -270,11 +298,10 @@ Follow this EXACT 3-step structure:
 Explain "${concept}" using one vivid analogy from cricket, IPL, Bollywood, or Indian daily life. Zero code. Maximum 3 sentences.
 
 **Step 2 — Syntax:**
-Show ONLY the syntax for "${concept}" in a single SQL code block. After the block, explain each line in one short sentence. Do not show examples of other concepts.
+Show ONLY the syntax for "${concept}" in a single SQL code block. After the block, explain each line in one short sentence.
 
-**Step 3 — Visual:**
-Show a simple ASCII table visual demonstrating what "${concept}" does to data. Use a small 3-4 row table with Indian names/data. Show BEFORE and AFTER the operation clearly like this format:
-BEFORE → [operation] → AFTER
+**Step 3 — Example:**
+Show ONE short example of "${concept}" in action with realistic Indian data (players, movies, orders). Keep it to 3-4 lines.
 
 End with exactly: "Ready to try one yourself? Just say yes."
 Do NOT quiz. Do NOT ask questions. Teach only.`;
