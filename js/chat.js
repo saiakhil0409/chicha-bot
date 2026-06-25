@@ -37,7 +37,7 @@ const Chat = (() => {
         msgs.scrollTop = msgs.scrollHeight;
         document.getElementById('sparkCard').style.display = 'none';
         const backBar = document.getElementById('backToSparkBar');
-        if (backBar) backBar.style.display = 'block';
+        if (backBar) backBar.style.visibility = 'visible';
         return true;
       }
     } catch(e) {}
@@ -269,7 +269,7 @@ FORMAT: Use inline code with backticks. For SQL blocks use triple backticks with
       document.getElementById('messages').innerHTML = '';
       // Show back button
       const backBar = document.getElementById('backToSparkBar');
-      if (backBar) backBar.style.display = 'block';
+      if (backBar) backBar.style.visibility = 'visible';
       // Collapse sidebar spark
       App.collapseSpark();
       const msg = `Let's learn about **${spark.concept || spark.title}**. Start by giving me the analogy approach.`;
