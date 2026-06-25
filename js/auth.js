@@ -51,16 +51,21 @@ const Auth = (() => {
     doSetup() {
       const key = document.getElementById('setupKey').value.trim();
       const pw  = document.getElementById('setupPw').value.trim();
+      if (!key) { err('setupError', 'Paste your Groq API key first.'); return; }
       if (!key.startsWith('gsk_') && !key.startsWith('sk-')) {
-        err('setupError', 'Key should start with gsk_ (Groq) or sk- (OpenAI)'); return;
+        err('setupError', 'Key must start with gsk_ (Groq) or sk- (OpenAI). Check you copied the full key.'); return;
       }
       if (pw.length < 4) { err('setupError', 'Password must be at least 4 characters.'); return; }
-      const encrypted = CryptoJS.AES.encrypt(key, pw).toString();
-      const token = Math.random().toString(36).slice(2);
-      sessionStorage.setItem('chicha_token', token);
-      sessionStorage.setItem('chicha_pw', pw);
-      localStorage.setItem(STORE_KEY, JSON.stringify({ apiKey: encrypted, sessionToken: token }));
-      App.launch();
+      try {
+        const encrypted = CryptoJS.AES.encrypt(key, pw).toString();
+        const token = Math.random().toString(36).slice(2);
+        sessionStorage.setItem('chicha_token', token);
+        sessionStorage.setItem('chicha_pw', pw);
+        localStorage.setItem(STORE_KEY, JSON.stringify({ apiKey: encrypted, sessionToken: token }));
+        App.launch();
+      } catch(e) {
+        err('setupError', 'Something went wrong: ' + e.message);
+      }
     },
 
     toggleForgot() {
@@ -98,8 +103,12 @@ const Auth = (() => {
     toggleSetup() {
       const lf = document.getElementById('loginForm');
       const sf = document.getElementById('setupForm');
-      lf.style.display = lf.style.display === 'none' ? '' : 'none';
-      sf.style.display = sf.style.display === 'none' ? '' : 'none';
+      const ff = document.getElementById('forgotForm');
+      const goingToSetup = sf.style.display === 'none';
+      lf.style.display = goingToSetup ? 'none' : '';
+      sf.style.display = goingToSetup ? '' : 'none';
+      if (ff) ff.style.display = 'none'; // always hide forgot when toggling setup
+      document.getElementById('setupError').textContent = '';
     },
 
     togglePw(inputId, btn) {
