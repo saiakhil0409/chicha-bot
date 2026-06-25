@@ -11,22 +11,18 @@ const App = (() => {
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('mainApp').classList.remove('hidden');
 
-      // Init systems
       Mood.init();
       Chat.init();
       Voice.init();
 
-      // Load last topic
       _topic = State.get().topic || 'SQL';
       App.setTopic(_topic, true);
+      App.syncSidebar();
 
-      // Mood decay every 2 min
       _moodInterval = setInterval(() => Mood.decay(), 120000);
 
-      // Surprise check (after short delay so app is fully visible)
       setTimeout(() => Surprise.checkAndShow(), 800);
 
-      // Auto-resize textarea
       const ta = document.getElementById('userInput');
       ta.addEventListener('input', () => {
         ta.style.height = 'auto';
@@ -38,16 +34,13 @@ const App = (() => {
       _topic = topic;
       State.set({ topic });
 
-      // Update pills
       document.querySelectorAll('.tpill').forEach(p => {
         p.classList.toggle('active', p.textContent.replace(' ','') === topic.replace(' ','') || p.textContent === topic);
       });
 
-      // Load new spark
       Chat.loadSpark(topic);
-
-      // Render curriculum
       App.renderCurriculum();
+      App.syncSidebar();
 
       if (!silent) App.showPanel('chat');
     },
@@ -56,9 +49,12 @@ const App = (() => {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.getElementById(name + 'Panel')?.classList.add('active');
 
-      // Bottom nav active state
       document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
       document.getElementById('bnav-' + (name === 'chat' ? 'chat' : name))?.classList.add('active');
+
+      // Sidebar active state
+      document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'));
+      document.getElementById('sbChat')?.classList.toggle('active', name === 'chat');
 
       if (name === 'notes') Notes.render();
     },
@@ -67,7 +63,46 @@ const App = (() => {
       _menuOpen = !_menuOpen;
       document.getElementById('sideDrawer').classList.toggle('hidden', !_menuOpen);
       document.getElementById('drawerBackdrop').classList.toggle('hidden', !_menuOpen);
-      document.getElementById('menuBtn').textContent = _menuOpen ? '✕' : '≡';
+      const btn = document.getElementById('menuBtn');
+      if (btn) btn.textContent = _menuOpen ? '✕' : '≡';
+    },
+
+    syncSidebar() {
+      const s = State.get();
+      const mastered = s.masteredConcepts || [];
+
+      // Spark card in sidebar
+      const spark = document.getElementById('sbSparkTitle');
+      const sparkBody = document.getElementById('sbSparkBody');
+      const mainTitle = document.getElementById('sparkTitle');
+      const mainBody  = document.getElementById('sparkBody');
+      if (spark && mainTitle) spark.textContent = mainTitle.textContent;
+      if (sparkBody && mainBody) sparkBody.textContent = mainBody.textContent;
+
+      // XP / streak / mastered
+      const xpEl = document.getElementById('sbXp');
+      const stEl = document.getElementById('sbStreak');
+      const maEl = document.getElementById('sbMastered');
+      if (xpEl) xpEl.textContent = s.xp || 0;
+      if (stEl) stEl.textContent = `🔥 ${s.streak || 0}`;
+      if (maEl) maEl.textContent = `${mastered.length} concepts`;
+
+      // Progress bars per topic
+      const topics = [
+        { key:'SQL',     id:'Sql', color:'var(--violet)' },
+        { key:'PowerBI', id:'Pbi', color:'var(--amber)' },
+        { key:'Tableau', id:'Tab', color:'var(--green)' },
+      ];
+      topics.forEach(({ key, id, color }) => {
+        const sections = CURRICULUM[key] || [];
+        const total = sections.flatMap(s => s.concepts).length;
+        const done  = mastered.filter(c => sections.flatMap(s => s.concepts).includes(c)).length;
+        const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
+        const barEl = document.getElementById(`sb${id}Bar`);
+        const pctEl = document.getElementById(`sb${id}Pct`);
+        if (barEl) { barEl.style.width = pct + '%'; barEl.style.background = color; }
+        if (pctEl) pctEl.textContent = pct + '%';
+      });
     },
 
     renderCurriculum() {
@@ -100,7 +135,6 @@ window.addEventListener('load', () => {
   if (Auth.isLoggedIn()) {
     App.launch();
   }
-  // Focus password input
   const pw = document.getElementById('pwInput');
   if (pw && !Auth.isLoggedIn()) pw.focus();
 });
