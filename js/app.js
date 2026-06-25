@@ -60,12 +60,23 @@ const App = (() => {
     },
 
     toggleSpark() {
-      const card = document.getElementById('sbSparkCard');
-      if (card) card.classList.toggle('collapsed');
+      const collapsed = document.getElementById('sbSparkCollapsed');
+      const expanded  = document.getElementById('sbSparkExpanded');
+      if (!collapsed || !expanded) return;
+      const isCollapsed = collapsed.style.display !== 'none';
+      collapsed.style.display = isCollapsed ? 'none' : 'flex';
+      expanded.style.display  = isCollapsed ? 'block' : 'none';
+    },
+
+    collapseSpark() {
+      const collapsed = document.getElementById('sbSparkCollapsed');
+      const expanded  = document.getElementById('sbSparkExpanded');
+      if (collapsed) collapsed.style.display = 'flex';
+      if (expanded)  expanded.style.display  = 'none';
     },
 
     backToSpark() {
-      // Clear chat messages
+      // Clear chat
       document.getElementById('messages').innerHTML = '';
       sessionStorage.removeItem('chicha_chat_msgs');
       sessionStorage.removeItem('chicha_chat_history');
@@ -73,10 +84,10 @@ const App = (() => {
       const sparkCard = document.getElementById('sparkCard');
       if (sparkCard) sparkCard.style.display = '';
       // Hide back button
-      document.getElementById('backToSparkBar').style.display = 'none';
-      // Re-expand sidebar spark
-      const sbCard = document.getElementById('sbSparkCard');
-      if (sbCard) sbCard.classList.add('collapsed');
+      const backBar = document.getElementById('backToSparkBar');
+      if (backBar) backBar.style.display = 'none';
+      // Collapse sidebar spark
+      App.collapseSpark();
     },
 
     toggleMenu() {
@@ -91,13 +102,13 @@ const App = (() => {
       const s = State.get();
       const mastered = s.masteredConcepts || [];
 
-      // Spark card in sidebar
-      const spark = document.getElementById('sbSparkTitle');
-      const sparkBody = document.getElementById('sbSparkBody');
+      // Spark card in sidebar — update expanded view
+      const sbTitle = document.getElementById('sbSparkTitle');
+      const sbBody  = document.getElementById('sbSparkBody');
       const mainTitle = document.getElementById('sparkTitle');
       const mainBody  = document.getElementById('sparkBody');
-      if (spark && mainTitle) spark.textContent = mainTitle.textContent;
-      if (sparkBody && mainBody) sparkBody.textContent = mainBody.textContent;
+      if (sbTitle && mainTitle) sbTitle.textContent = mainTitle.textContent;
+      if (sbBody  && mainBody)  sbBody.textContent  = mainBody.textContent;
 
       // XP / streak / mastered
       const xpEl = document.getElementById('sbXp');
