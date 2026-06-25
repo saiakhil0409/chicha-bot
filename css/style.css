@@ -29,7 +29,9 @@
   --bnav-h:    60px;
 }
 
-html, body { height: 100%; overflow: hidden; }
+html, body { height: 100%; }
+body { overflow-y: auto; }
+body.app-open { overflow: hidden; }
 body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.5; }
 
 a { color: var(--violet); }
@@ -148,14 +150,16 @@ code { font-family: var(--mono); color: #a78bfa; font-size: 0.9em; }
 
 /* ── LOGIN ──────────────────────────────────────────────────────────────── */
 .login-screen {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  padding: 20px;
+  min-height: 100vh; display: flex; align-items: flex-start; justify-content: center;
+  padding: 24px 20px;
+  overflow-y: auto;
   background: radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.08) 0%, transparent 70%);
 }
 .login-card {
   background: var(--surface); border: 1px solid var(--border2);
   border-radius: 20px; padding: 36px 32px; max-width: 380px; width: 100%;
   box-shadow: 0 0 60px rgba(139,92,246,0.1);
+  margin: auto;
 }
 .login-gem-wrap { position: relative; width: 56px; height: 56px; margin: 0 auto 20px; }
 .login-gem {
