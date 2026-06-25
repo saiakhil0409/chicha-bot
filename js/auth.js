@@ -63,6 +63,38 @@ const Auth = (() => {
       App.launch();
     },
 
+    toggleForgot() {
+      const lf = document.getElementById('loginForm');
+      const ff = document.getElementById('forgotForm');
+      const sf = document.getElementById('setupForm');
+      // Hide all, show forgot
+      const showForgot = ff.style.display === 'none';
+      lf.style.display = showForgot ? 'none' : '';
+      ff.style.display = showForgot ? '' : 'none';
+      sf.style.display = 'none';
+      document.getElementById('resetError').textContent = '';
+    },
+
+    doReset() {
+      const key = document.getElementById('resetNewKey').value.trim();
+      const pw  = document.getElementById('resetNewPw').value.trim();
+      if (!key.startsWith('gsk_') && !key.startsWith('sk-')) {
+        document.getElementById('resetError').textContent = 'Key should start with gsk_ (Groq)'; return;
+      }
+      if (pw.length < 4) {
+        document.getElementById('resetError').textContent = 'Password must be at least 4 characters.'; return;
+      }
+      // Remove old auth, keep learning progress
+      localStorage.removeItem('chicha_auth');
+      // Set up fresh with new key + password
+      const encrypted = CryptoJS.AES.encrypt(key, pw).toString();
+      const token = Math.random().toString(36).slice(2);
+      sessionStorage.setItem('chicha_token', token);
+      sessionStorage.setItem('chicha_pw', pw);
+      localStorage.setItem('chicha_auth', JSON.stringify({ apiKey: encrypted, sessionToken: token }));
+      App.launch();
+    },
+
     toggleSetup() {
       const lf = document.getElementById('loginForm');
       const sf = document.getElementById('setupForm');
