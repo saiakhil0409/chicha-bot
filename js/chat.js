@@ -266,6 +266,12 @@ FORMAT: Use inline code with backticks. For SQL blocks use triple backticks with
       if (!spark) return;
       document.getElementById('sparkCard').style.display = 'none';
       document.getElementById('messages').innerHTML = '';
+      // Show back button
+      const backBar = document.getElementById('backToSparkBar');
+      if (backBar) backBar.style.display = '';
+      // Collapse sidebar spark
+      const sbCard = document.getElementById('sbSparkCard');
+      if (sbCard) sbCard.classList.add('collapsed');
       const msg = `Let's learn about **${spark.concept || spark.title}**. Start by giving me the analogy approach.`;
       showTyping();
       try {
