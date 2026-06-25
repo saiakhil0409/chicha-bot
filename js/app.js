@@ -1,8 +1,7 @@
 // ── APP ───────────────────────────────────────────────────────────────────────
 const App = (() => {
-  let _topic = 'SQL';
-  let _menuOpen = false;
-  let _moodInterval = null;
+  let _topic     = 'SQL';
+  let _menuOpen  = false;
 
   return {
     currentTopic() { return _topic; },
@@ -19,15 +18,17 @@ const App = (() => {
       App.setTopic(_topic, true);
       App.syncSidebar();
 
-      _moodInterval = setInterval(() => Mood.decay(), 120000);
-
+      setInterval(() => Mood.decay(), 120000);
       setTimeout(() => Surprise.checkAndShow(), 800);
 
+      // Auto-resize textarea
       const ta = document.getElementById('userInput');
-      ta.addEventListener('input', () => {
-        ta.style.height = 'auto';
-        ta.style.height = Math.min(ta.scrollHeight, 100) + 'px';
-      });
+      if (ta) {
+        ta.addEventListener('input', () => {
+          ta.style.height = 'auto';
+          ta.style.height = Math.min(ta.scrollHeight, 100) + 'px';
+        });
+      }
     },
 
     setTopic(topic, silent = false) {
@@ -35,7 +36,8 @@ const App = (() => {
       State.set({ topic });
 
       document.querySelectorAll('.tpill').forEach(p => {
-        p.classList.toggle('active', p.textContent.replace(' ','') === topic.replace(' ','') || p.textContent === topic);
+        const match = p.textContent.trim().replace(' ','') === topic.replace(' ','') || p.textContent.trim() === topic;
+        p.classList.toggle('active', match);
       });
 
       Chat.loadSpark(topic);
@@ -49,48 +51,39 @@ const App = (() => {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.getElementById(name + 'Panel')?.classList.add('active');
 
+      // Bottom nav active state — only chat/brain/replay/more exist
       document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
-      document.getElementById('bnav-' + (name === 'chat' ? 'chat' : name))?.classList.add('active');
+      if (name === 'chat') document.getElementById('bnav-chat')?.classList.add('active');
 
       // Sidebar active state
       document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'));
-      document.getElementById('sbChat')?.classList.toggle('active', name === 'chat');
-
-      if (name === 'notes') Notes.render();
-    },
-
-    scrollToSpark() {
-      const sparkCard    = document.getElementById('sparkCard');
-      const welcomeState = document.getElementById('welcomeState');
-      const messages     = document.getElementById('messages');
-      // If mid-conversation, go back to spark
-      if (messages && messages.children.length > 0) {
-        App.backToSpark();
-        return;
+      if (name === 'chat') document.getElementById('sbChat')?.classList.add('active');
+      if (name === 'curriculum') document.getElementById('sbCurriculum')?.classList.add('active');
+      if (name === 'notes') {
+        document.getElementById('sbNotes')?.classList.add('active');
+        Notes.render();
       }
-      // Show spark card, hide welcome
-      if (sparkCard)    sparkCard.style.display = '';
-      if (welcomeState) welcomeState.style.display = 'none';
-      App.showPanel('chat');
-      const panel = document.getElementById('chatPanel');
-      if (panel) panel.scrollTop = 0;
     },
 
-    collapseSpark() { /* no-op now, kept for compatibility */ },
-
-    backToSpark() {
-      document.getElementById('messages').innerHTML = '';
-      sessionStorage.removeItem('chicha_chat_msgs');
-      sessionStorage.removeItem('chicha_chat_history');
-      // Show spark card, hide welcome
-      const sparkCard    = document.getElementById('sparkCard');
-      const welcomeState = document.getElementById('welcomeState');
-      if (sparkCard)    sparkCard.style.display = '';
-      if (welcomeState) welcomeState.style.display = 'none';
-      // Hide back button
-      const backBar = document.getElementById('backToSparkBar');
-      if (backBar) backBar.style.visibility = 'hidden';
+    // Today's Spark badge clicked
+    scrollToSpark() {
+      const msgs = document.getElementById('messages');
+      if (msgs && msgs.children.length > 0) {
+        // Mid-conversation — go back to spark
+        Chat.backToSpark();
+      } else {
+        Chat.showSpark();
+      }
     },
+
+    // Chat nav item clicked
+    openChat() {
+      Chat.openChat();
+    },
+
+    collapseSpark() { /* intentional no-op */ },
+
+    backToSpark() { Chat.backToSpark(); },
 
     toggleMenu() {
       _menuOpen = !_menuOpen;
@@ -101,18 +94,16 @@ const App = (() => {
     },
 
     syncSidebar() {
-      const s = State.get();
+      const s       = State.get();
       const mastered = s.masteredConcepts || [];
 
-      // XP / streak / mastered
       const xpEl = document.getElementById('sbXp');
       const stEl = document.getElementById('sbStreak');
       const maEl = document.getElementById('sbMastered');
-      if (xpEl) xpEl.textContent = s.xp || 0;
+      if (xpEl) xpEl.textContent = `${s.xp || 0}`;
       if (stEl) stEl.textContent = `🔥 ${s.streak || 0}`;
       if (maEl) maEl.textContent = `${mastered.length} concepts`;
 
-      // Progress bars per topic
       const topicMap = [
         { key:'SQL',     id:'Sql', color:'#8b5cf6' },
         { key:'PowerBI', id:'Pbi', color:'#f59e0b' },
@@ -120,11 +111,11 @@ const App = (() => {
       ];
       topicMap.forEach(({ key, id, color }) => {
         const sections = CURRICULUM[key] || [];
-        const total = sections.flatMap(s => s.concepts).length;
-        const done  = mastered.filter(c => sections.flatMap(s => s.concepts).includes(c)).length;
-        const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
-        const barEl = document.getElementById(`sb${id}Bar`);
-        const pctEl = document.getElementById(`sb${id}Pct`);
+        const total    = sections.flatMap(sc => sc.concepts).length;
+        const done     = mastered.filter(c => sections.flatMap(sc => sc.concepts).includes(c)).length;
+        const pct      = total > 0 ? Math.round((done / total) * 100) : 0;
+        const barEl    = document.getElementById(`sb${id}Bar`);
+        const pctEl    = document.getElementById(`sb${id}Pct`);
         if (barEl) { barEl.style.width = pct + '%'; barEl.style.background = color; }
         if (pctEl) pctEl.textContent = pct + '%';
       });
@@ -133,33 +124,28 @@ const App = (() => {
     renderCurriculum() {
       const sections = CURRICULUM[_topic] || [];
       const mastered = State.get().masteredConcepts;
-      const el = document.getElementById('curriculumContent');
+      const el       = document.getElementById('curriculumContent');
       if (!el) return;
       el.innerHTML = sections.map(s => `
         <div class="curr-section">
           <div class="curr-section-header" onclick="this.nextElementSibling.classList.toggle('hidden')">
             <span class="curr-section-title">${s.section}</span>
-            <span class="curr-section-meta">${s.concepts.filter(c=>mastered.includes(c)).length}/${s.concepts.length}</span>
+            <span class="curr-section-meta">${s.concepts.filter(c => mastered.includes(c)).length}/${s.concepts.length}</span>
           </div>
           <div class="curr-topics hidden">
             ${s.concepts.map(c => `
-              <div class="curr-topic ${mastered.includes(c)?'mastered':''}">
-                <div class="curr-topic-dot"></div>
-                ${c}
-              </div>
-            `).join('')}
+              <div class="curr-topic ${mastered.includes(c) ? 'mastered' : ''}">
+                <div class="curr-topic-dot"></div>${c}
+              </div>`).join('')}
           </div>
-        </div>
-      `).join('');
+        </div>`).join('');
     },
   };
 })();
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
-  if (Auth.isLoggedIn()) {
-    App.launch();
-  }
+  if (Auth.isLoggedIn()) App.launch();
   const pw = document.getElementById('pwInput');
   if (pw && !Auth.isLoggedIn()) pw.focus();
 });
