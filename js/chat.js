@@ -271,8 +271,7 @@ FORMAT: Use inline code with backticks. For SQL blocks use triple backticks with
       const backBar = document.getElementById('backToSparkBar');
       if (backBar) backBar.style.display = 'block';
       // Collapse sidebar spark
-      const sbCard = document.getElementById('sbSparkCard');
-      if (sbCard) sbCard.classList.add('collapsed');
+      App.collapseSpark();
       const msg = `Let's learn about **${spark.concept || spark.title}**. Start by giving me the analogy approach.`;
       showTyping();
       try {
