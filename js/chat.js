@@ -279,7 +279,15 @@ FORMAT: Use inline code with backticks. For SQL blocks use triple backticks with
       if (backBar) backBar.style.visibility = 'visible';
       // Collapse sidebar spark
       App.collapseSpark();
-      const msg = `Let's learn about **${spark.concept || spark.title}**. Start by giving me the analogy approach.`;
+      const msg = `Teach me about "${spark.concept || spark.title}" using this exact 3-step structure:
+
+STEP 1 — ANALOGY: Explain the concept using a vivid real-world analogy (cricket, Bollywood, street food, F1, or everyday Indian life). No code yet. Just make the concept click intuitively.
+
+STEP 2 — SYNTAX: Now show the actual SQL syntax with a short annotated code block. Explain each line in one sentence.
+
+STEP 3 — REAL EXAMPLE: Show one practical example query using the concept. Keep it concrete.
+
+End with: "Ready to try one yourself?" — nothing else. Do NOT ask a question yet. Do NOT quiz me yet. Just teach first.`;
       showTyping();
       try {
         const reply = await callAI(msg);
