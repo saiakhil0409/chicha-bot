@@ -256,10 +256,14 @@ FORMAT: Use inline code with backticks. For SQL blocks use triple backticks with
       updateUI();
       // Restore previous conversation if exists
       const restored = restoreMsgs();
-      if (!restored) {
-        // Fresh start — show spark card
-        document.getElementById('sparkCard').style.display = '';
+      if (restored) {
+        // Hide welcome state when session restored
+        const welcome = document.getElementById('welcomeState');
+        if (welcome) welcome.style.display = 'none';
       }
+      // Spark card always hidden on init — only shown via sidebar badge click
+      const sparkCard = document.getElementById('sparkCard');
+      if (sparkCard) sparkCard.style.display = 'none';
     },
 
     async startSpark() {
@@ -267,6 +271,9 @@ FORMAT: Use inline code with backticks. For SQL blocks use triple backticks with
       if (!spark) return;
       document.getElementById('sparkCard').style.display = 'none';
       document.getElementById('messages').innerHTML = '';
+      // Hide welcome state
+      const welcome = document.getElementById('welcomeState');
+      if (welcome) welcome.style.display = 'none';
       // Show back button
       const backBar = document.getElementById('backToSparkBar');
       if (backBar) backBar.style.visibility = 'visible';
@@ -311,6 +318,9 @@ FORMAT: Use inline code with backticks. For SQL blocks use triple backticks with
       input.style.height = 'auto';
 
       appendMsg('user', text);
+      // Hide welcome state and spark card on first message
+      const welcome = document.getElementById('welcomeState');
+      if (welcome) welcome.style.display = 'none';
       showTyping();
 
       try {
