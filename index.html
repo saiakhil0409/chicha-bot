@@ -144,14 +144,14 @@
   </div>
   <div class="drawer-backdrop hidden" id="drawerBackdrop" onclick="App.toggleMenu()"></div>
 
-  <!-- Desktop Sidebar -->
+    <!-- Desktop Sidebar -->
   <div class="desktop-sidebar" id="desktopSidebar">
-    <!-- Spark card -->
-    <div class="sb-spark" onclick="Chat.startSpark()">
+    <!-- Spark card — collapsed by default, expands on click -->
+    <div class="sb-spark collapsed" id="sbSparkCard" onclick="App.toggleSpark()">
       <div class="sb-spark-badge">✦ TODAY'S SPARK</div>
-      <div class="sb-spark-title" id="sbSparkTitle">Loading…</div>
+      <div class="sb-spark-title" id="sbSparkTitle"></div>
       <div class="sb-spark-body" id="sbSparkBody"></div>
-      <button class="sb-spark-btn">Start Learning →</button>
+      <button class="sb-spark-btn" onclick="event.stopPropagation();Chat.startSpark()">Start Learning →</button>
     </div>
 
     <div class="sb-divider"></div>
@@ -238,6 +238,12 @@
 
     <!-- Chat panel -->
     <div class="panel active" id="chatPanel">
+      <!-- Back to spark button — shows after spark is dismissed -->
+      <div id="backToSparkBar" style="display:none;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--surface)">
+        <button onclick="App.backToSpark()" style="background:none;border:1px solid var(--border2);color:var(--muted);padding:5px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:var(--mono);">
+          ← Back to today's spark
+        </button>
+      </div>
       <!-- Spark card -->
       <div class="spark-card" id="sparkCard">
         <div class="spark-top">
