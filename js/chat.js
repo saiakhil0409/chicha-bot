@@ -161,19 +161,40 @@ const Chat = (() => {
     const s        = State.get();
     const mood     = Mood.getTone();
     const topic    = App.currentTopic();
-    const mastered = s.masteredConcepts.slice(-5).join(', ') || 'none yet';
     const concept  = _currentSpark?.concept || '';
     const theory   = isTheory(concept);
     const plan     = getMasteryPlan(concept);
     const diff     = getDifficultyTarget();
+
+    // Build ordered curriculum context — what student knows so far
+    const sections    = CURRICULUM[topic] || [];
+    const allConcepts = sections.flatMap(sc => sc.concepts);
+    const conceptIdx  = allConcepts.indexOf(concept);
+    const taughtSoFar = conceptIdx > 0
+      ? allConcepts.slice(0, conceptIdx).join(', ')
+      : 'nothing yet — this is the very first concept';
+    const notYetTaught = conceptIdx < allConcepts.length - 1
+      ? allConcepts.slice(conceptIdx + 1, conceptIdx + 4).join(', ') + '...'
+      : 'none — this is the last concept';
 
     return `You are Chicha — a sharp, warm, slightly dry AI tutor for ${topic}.
 
 PERSONALITY: Brilliant friend who knows data. Vivid analogies. Direct. Dry humour. Never "Great question!" Never "Certainly!". Max 220 words unless showing code.
 
 MOOD: ${mood}
-STUDENT: XP=${s.xp} | Streak=${s.streak} | Recently mastered: ${mastered}
-CONCEPT: "${concept}" | Type: ${plan.type} | Difficulty now: ${diff.level.toUpperCase()}
+STUDENT: XP=${s.xp} | Streak=${s.streak}
+CURRENT CONCEPT: "${concept}" (position ${conceptIdx + 1} of ${allConcepts.length})
+
+━━━ CURRICULUM ORDER — STRICT ━━━
+Student has been taught (in order): ${taughtSoFar}
+Student is learning NOW: "${concept}"
+Student has NOT been taught yet: ${notYetTaught}
+
+YOUR QUESTIONS MUST:
+- Only reference concepts from the "taught so far" list OR the current concept
+- NEVER reference anything from "not yet taught" list
+- For "${concept}" specifically — only ask what it IS, what it DOES, when to USE it
+- Do not introduce new concepts mid-question
 
 ━━━ CONCEPT BOUNDARY — CRITICAL ━━━
 You are ONLY allowed to ask questions about "${concept}".
