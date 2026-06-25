@@ -146,12 +146,24 @@
 
     <!-- Desktop Sidebar -->
   <div class="desktop-sidebar" id="desktopSidebar">
-    <!-- Spark card — collapsed by default, expands on click -->
-    <div class="sb-spark collapsed" id="sbSparkCard" onclick="App.toggleSpark()">
-      <div class="sb-spark-badge">✦ TODAY'S SPARK</div>
-      <div class="sb-spark-title" id="sbSparkTitle"></div>
-      <div class="sb-spark-body" id="sbSparkBody"></div>
-      <button class="sb-spark-btn" onclick="event.stopPropagation();Chat.startSpark()">Start Learning →</button>
+    <!-- Spark card — JS controlled, no CSS class fighting -->
+    <div id="sbSparkCard" style="margin:14px;border-radius:12px;background:linear-gradient(135deg,rgba(139,92,246,0.1),rgba(109,40,217,0.05));border:1px solid rgba(139,92,246,0.22);position:relative;overflow:hidden;cursor:pointer;transition:border-color 0.2s;">
+      <!-- Top gradient line -->
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--violet),var(--green),transparent)"></div>
+      <!-- Collapsed view -->
+      <div id="sbSparkCollapsed" style="display:flex;align-items:center;justify-content:center;padding:12px 16px;" onclick="App.toggleSpark()">
+        <span style="font-family:var(--mono);font-size:9px;letter-spacing:2px;padding:3px 12px;border-radius:20px;background:var(--violet-md);color:var(--violet);border:1px solid rgba(139,92,246,0.3)">✦ TODAY'S SPARK</span>
+      </div>
+      <!-- Expanded view -->
+      <div id="sbSparkExpanded" style="display:none;padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-family:var(--mono);font-size:9px;letter-spacing:2px;padding:3px 10px;border-radius:20px;background:var(--violet-md);color:var(--violet);border:1px solid rgba(139,92,246,0.3)">✦ TODAY'S SPARK</span>
+          <button onclick="App.toggleSpark()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px;">✕</button>
+        </div>
+        <div id="sbSparkTitle" style="font-size:13px;font-weight:700;color:#e8e8f0;margin-bottom:6px;line-height:1.4;"></div>
+        <div id="sbSparkBody" style="font-size:11px;color:#b0b0cc;line-height:1.6;margin-bottom:12px;"></div>
+        <button onclick="Chat.startSpark()" style="width:100%;background:var(--violet);color:#fff;border:none;padding:8px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;">Start Learning →</button>
+      </div>
     </div>
 
     <div class="sb-divider"></div>
