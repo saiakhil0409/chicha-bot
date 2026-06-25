@@ -275,14 +275,12 @@ Do NOT ask any other question. Do NOT quiz yet. Teach only.`;
 
     surpriseSpark() {
       const topic   = App.currentTopic();
-      _currentSpark = getSparkForTopic(topic);
-      // Update spark card content
+      _currentSpark = getSparkForTopic(topic, true); // random from unmastered
       document.getElementById('sparkTitle').textContent   = _currentSpark.title;
       document.getElementById('sparkBody').textContent    = _currentSpark.analogy;
       document.getElementById('sparkConcept').textContent = _currentSpark.concept || '';
       const topicEl = document.getElementById('psTopic');
       if (topicEl) topicEl.textContent = `${topic} · ${_currentSpark.concept || ''}`;
-      // Make sure spark card is visible
       Chat.showSpark();
     },
 
