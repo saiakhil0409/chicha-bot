@@ -106,6 +106,8 @@ const App = (() => {
       // Reload the app fresh
       window.location.reload();
     },
+
+    toggleMenu() {
       _menuOpen = !_menuOpen;
       document.getElementById('sideDrawer').classList.toggle('hidden', !_menuOpen);
       document.getElementById('drawerBackdrop').classList.toggle('hidden', !_menuOpen);
