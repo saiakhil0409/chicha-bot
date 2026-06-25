@@ -13,7 +13,6 @@ const App = (() => {
 
       Mood.init();
       Chat.init();
-      Voice.init();
 
       _topic = State.get().topic || 'SQL';
       App.setTopic(_topic, true);
