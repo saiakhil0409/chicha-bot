@@ -691,3 +691,57 @@ code { font-family: var(--mono); color: #a78bfa; font-size: 0.9em; }
   font-size: 12px !important;
   line-height: 1.6;
 }
+
+/* ── ROADMAP PANEL ───────────────────────────────────────────────────────────── */
+.roadmap-panel {
+  display: none;
+  width: 220px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  flex-shrink: 0;
+  grid-area: roadmap;
+}
+
+@media (min-width: 1024px) {
+  .roadmap-panel { display: block; }
+
+  .main-app {
+    grid-template-columns: 260px 1fr 220px !important;
+    grid-template-areas:
+      "topbar   topbar   topbar"
+      "pstrip   pstrip   pstrip"
+      "mood     mood     mood"
+      "sidebar  main     roadmap"
+      "sidebar  inputbar roadmap" !important;
+  }
+  .roadmap-panel { grid-area: roadmap; }
+}
+
+.rm-section { border-bottom: 1px solid var(--border); padding: 8px 0; }
+.rm-section-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 12px; cursor: pointer;
+}
+.rm-section-title { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--muted2); text-transform: uppercase; }
+.rm-section-count { font-family: var(--mono); font-size: 10px; }
+.rm-concepts { padding: 2px 0; }
+.rm-collapsed { display: none; }
+.rm-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; cursor: pointer; transition: background 0.15s;
+  font-size: 11px; color: var(--muted);
+}
+.rm-item:hover { background: var(--violet-lo); color: var(--violet); }
+.rm-item.rm-done { color: #34d399; }
+.rm-item.rm-current { background: var(--violet-lo); color: var(--violet); font-weight: 600; border-left: 2px solid var(--violet); }
+.rm-item.rm-locked { color: var(--muted2); cursor: not-allowed; }
+.rm-icon { font-size: 11px; width: 16px; flex-shrink: 0; }
+.rm-label { flex: 1; line-height: 1.4; }
+.rm-xp { font-family: var(--mono); font-size: 9px; color: #34d399; }
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
