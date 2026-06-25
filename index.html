@@ -65,8 +65,30 @@
       </div>
       <button class="btn-primary" onclick="Auth.doLogin()">Open Chicha →</button>
       <div class="login-error" id="loginError"></div>
-      <div class="login-divider">First time? <span class="link" onclick="Auth.toggleSetup()">Set up your Groq API key</span></div>
+      <div class="login-divider" style="display:flex;justify-content:space-between;">
+        <span class="link" onclick="Auth.toggleSetup()">First time? Set up →</span>
+        <span class="link" style="color:#f87171" onclick="Auth.toggleForgot()">Forgot password?</span>
+      </div>
     </div>
+
+    <!-- Forgot password form -->
+    <div id="forgotForm" style="display:none">
+      <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:14px;margin-bottom:14px;">
+        <div style="font-size:12px;color:#f87171;font-weight:600;margin-bottom:6px;">⚠ Reset will clear your password</div>
+        <div style="font-size:12px;color:#9999bb;line-height:1.6;">Your Groq API key will be removed. You'll need to paste it again and set a new password. Your learning progress is kept.</div>
+      </div>
+      <div class="field-wrap">
+        <input type="password" id="resetNewKey" class="field-input" placeholder="Paste your Groq key again (gsk_...)" autocomplete="off">
+        <button class="field-eye" onclick="Auth.togglePw('resetNewKey',this)">👁</button>
+      </div>
+      <div class="field-wrap">
+        <input type="password" id="resetNewPw" class="field-input" placeholder="Set a new password (min 4 chars)" autocomplete="off">
+      </div>
+      <button class="btn-primary" onclick="Auth.doReset()" style="background:#f87171;box-shadow:0 0 20px rgba(248,113,113,0.3);">Reset & Open Chicha →</button>
+      <div class="login-error" id="resetError"></div>
+      <div class="login-divider"><span class="link" onclick="Auth.toggleForgot()">← Back to login</span></div>
+    </div>
+
     <div id="setupForm" style="display:none">
       <div class="setup-steps">
         <div class="setup-step"><span class="step-n">1</span>Go to <a href="https://console.groq.com" target="_blank">console.groq.com</a> → sign in free</div>
