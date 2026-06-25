@@ -236,24 +236,32 @@
 
     <!-- Chat panel -->
     <div class="panel active" id="chatPanel">
-      <!-- Back to spark button — hidden until learning starts -->
+      <!-- Back to spark button -->
       <div id="backToSparkBar" style="visibility:hidden;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10;">
-        <button onclick="App.backToSpark()" style="background:var(--violet-lo);border:1px solid rgba(139,92,246,0.3);color:var(--violet);padding:6px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:var(--mono);letter-spacing:1px;">
+        <button onclick="App.backToSpark()" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#a78bfa;padding:6px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'JetBrains Mono',monospace;letter-spacing:1px;">
           ← TODAY'S SPARK
         </button>
       </div>
-      <!-- Spark card -->
-      <div class="spark-card" id="sparkCard">
+
+      <!-- Spark card — hidden by default, shown when sidebar badge clicked -->
+      <div class="spark-card" id="sparkCard" style="display:none">
         <div class="spark-top">
           <span class="spark-badge">✦ TODAY'S SPARK</span>
-          <span class="spark-concept" id="sparkConcept">Loading…</span>
+          <span class="spark-concept" id="sparkConcept"></span>
         </div>
-        <div class="spark-title" id="sparkTitle">Waking up Chicha…</div>
+        <div class="spark-title" id="sparkTitle"></div>
         <div class="spark-body" id="sparkBody"></div>
         <div class="spark-actions">
           <button class="btn-primary spark-go" onclick="Chat.startSpark()">Start Learning →</button>
           <button class="btn-ghost" onclick="Chat.surpriseSpark()">🎲 Surprise me</button>
         </div>
+      </div>
+
+      <!-- Welcome state — shown on home, hidden when chatting -->
+      <div id="welcomeState" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px 20px;text-align:center;gap:16px;">
+        <div style="font-size:40px">✦</div>
+        <div style="font-size:18px;font-weight:700;color:#e8e8f0;">Ready when you are, Neo.</div>
+        <div style="font-size:13px;color:#6b6b8a;max-width:300px;line-height:1.6;">Click <strong style="color:#a78bfa;">TODAY'S SPARK</strong> in the sidebar to start today's lesson, or just ask me anything below.</div>
       </div>
 
       <!-- Messages -->
