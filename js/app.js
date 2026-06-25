@@ -5,7 +5,7 @@ const App = (() => {
   let _moodInterval = null;
 
   return {
-    currentTopic() { return _topic; }
+    currentTopic() { return _topic; },
 
     launch() {
       document.getElementById('loginScreen').classList.add('hidden');
