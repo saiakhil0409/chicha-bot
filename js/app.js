@@ -96,14 +96,6 @@ const App = (() => {
       const s = State.get();
       const mastered = s.masteredConcepts || [];
 
-      // Spark card in sidebar — update expanded view
-      const sbTitle = document.getElementById('sbSparkTitle');
-      const sbBody  = document.getElementById('sbSparkBody');
-      const mainTitle = document.getElementById('sparkTitle');
-      const mainBody  = document.getElementById('sparkBody');
-      if (sbTitle && mainTitle) sbTitle.textContent = mainTitle.textContent;
-      if (sbBody  && mainBody)  sbBody.textContent  = mainBody.textContent;
-
       // XP / streak / mastered
       const xpEl = document.getElementById('sbXp');
       const stEl = document.getElementById('sbStreak');
@@ -113,12 +105,12 @@ const App = (() => {
       if (maEl) maEl.textContent = `${mastered.length} concepts`;
 
       // Progress bars per topic
-      const topics = [
-        { key:'SQL',     id:'Sql', color:'var(--violet)' },
-        { key:'PowerBI', id:'Pbi', color:'var(--amber)' },
-        { key:'Tableau', id:'Tab', color:'var(--green)' },
+      const topicMap = [
+        { key:'SQL',     id:'Sql', color:'#8b5cf6' },
+        { key:'PowerBI', id:'Pbi', color:'#f59e0b' },
+        { key:'Tableau', id:'Tab', color:'#34d399' },
       ];
-      topics.forEach(({ key, id, color }) => {
+      topicMap.forEach(({ key, id, color }) => {
         const sections = CURRICULUM[key] || [];
         const total = sections.flatMap(s => s.concepts).length;
         const done  = mastered.filter(c => sections.flatMap(s => s.concepts).includes(c)).length;
