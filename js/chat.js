@@ -3,25 +3,131 @@ const Chat = (() => {
   const HIST_KEY = 'chicha_chat_history';
   const MSG_KEY  = 'chicha_chat_msgs';
 
-  let _history       = [];
-  let _currentSpark  = null;
-  let _wrongAttempts = 0;
-  let _correctStreak = 0;
-  let _mode          = 'chat'; // 'chat' | 'spark'
-  let _practiceAsked = false;  // true after first practice question asked
-  let _masteredThisSession = false; // prevent double-mastering same concept
+  let _history             = [];
+  let _currentSpark        = null;
+  let _wrongAttempts       = 0;   // wrong answers this difficulty level
+  let _correctStreak       = 0;   // global correct streak
+  let _mode                = 'chat';
+  let _practiceAsked       = false;
+  let _masteredThisSession = false;
+  let _correctThisConcept  = 0;   // correct answers toward mastery
+  let _currentDifficulty   = 'easy'; // easy → intermediate → hard
+  let _sessionStartTime    = null; // for session summary timing
+  let _lastActivity        = Date.now(); // for idle detection
 
-  // ── Theory concepts — no SQL syntax ──────────────────────────────────────
+  // ── Concept complexity tiers ──────────────────────────────────────────────
+  // Theory: 5 total (2 easy MCQ, 2 intermediate MCQ, 1 explain-back)
+  // Simple SQL: 3 total (1 easy, 1 intermediate, 1 hard)
+  // Medium SQL: 5 total (2 easy, 2 intermediate, 1 hard)
+  // Complex SQL: 6 total (2 easy, 2 intermediate, 2 hard)
+
   const THEORY_CONCEPTS = [
-    'What is a Database', 'What is a Table', 'Data types',
-    'What is Power BI', 'Connecting data sources', 'Basic visuals',
-    'Connecting data', 'Dimensions vs Measures', 'Basic chart types',
+    'What is a Database','What is a Table','Data types',
+    'What is Power BI','Connecting data sources','Basic visuals',
+    'Connecting data','Dimensions vs Measures','Basic chart types',
   ];
+  const SIMPLE_SQL = [
+    'CREATE DATABASE','DROP DATABASE','LIMIT','DISTINCT','Column aliases',
+  ];
+  const COMPLEX_SQL = [
+    'INNER JOIN','LEFT JOIN','RIGHT JOIN','FULL OUTER JOIN','Self JOIN',
+    'Multi-table JOIN','Subqueries','CTEs (WITH clause)',
+    'Window functions','RANK & DENSE_RANK','LAG & LEAD','Running totals',
+  ];
+
+  // Returns { easy, intermediate, hard, total } for a concept
+  function getMasteryPlan(concept) {
+    if (THEORY_CONCEPTS.some(t => concept.toLowerCase().includes(t.toLowerCase()))) {
+      return { easy:2, intermediate:2, hard:1, total:5, type:'theory' };
+    }
+    if (SIMPLE_SQL.some(t => concept.toLowerCase().includes(t.toLowerCase()))) {
+      return { easy:1, intermediate:1, hard:1, total:3, type:'simple' };
+    }
+    if (COMPLEX_SQL.some(t => concept.toLowerCase().includes(t.toLowerCase()))) {
+      return { easy:2, intermediate:2, hard:2, total:6, type:'complex' };
+    }
+    return { easy:2, intermediate:2, hard:1, total:5, type:'medium' }; // default
+  }
+
   function isTheory(concept) {
     return THEORY_CONCEPTS.some(t => concept.toLowerCase().includes(t.toLowerCase()));
   }
 
-  // ── Persistence ──────────────────────────────────────────────────────────
+  // Returns current difficulty and target count for it
+  function getDifficultyTarget() {
+    const plan = getMasteryPlan(_currentSpark?.concept || '');
+    const easy_done = Math.min(_correctThisConcept, plan.easy);
+    const inter_done = Math.min(Math.max(_correctThisConcept - plan.easy, 0), plan.intermediate);
+    const hard_done  = Math.max(_correctThisConcept - plan.easy - plan.intermediate, 0);
+    if (_correctThisConcept < plan.easy) return { level:'easy', target: plan.easy, done: easy_done };
+    if (_correctThisConcept < plan.easy + plan.intermediate) return { level:'intermediate', target: plan.intermediate, done: inter_done };
+    return { level:'hard', target: plan.hard, done: hard_done };
+  }
+
+  // ── Inner Monologue triggers ──────────────────────────────────────────────
+  function checkMonologue() {
+    const s = State.get();
+    const msgs = document.getElementById('messages');
+    if (!msgs) return;
+
+    // 3 correct in a row — confidence booster
+    if (_correctStreak === 3) {
+      injectMonologue(`Okay I'm actually impressed. I gave you harder questions on purpose and you didn't flinch. Let's see how you handle what's coming next… 👀`, 'boost');
+      return;
+    }
+
+    // Struggling on same difficulty — pivot
+    if (_wrongAttempts === 2) {
+      injectMonologue(`Alright, clearly my previous angle isn't landing. Let me try this from a completely different direction — same concept, different approach.`, 'pivot');
+      return;
+    }
+
+    // Idle for 3+ minutes mid-session
+    const idleMs = Date.now() - _lastActivity;
+    if (idleMs > 180000 && _mode === 'spark') {
+      injectMonologue(`Still there? No judgment. Take your time — this stuff actually takes a moment to click. When you're ready, just reply.`, 'idle');
+      return;
+    }
+  }
+
+  function injectMonologue(text, type) {
+    const msgs = document.getElementById('messages');
+    if (!msgs) return;
+    const colors = {
+      boost: { bg:'rgba(139,92,246,0.08)', border:'rgba(139,92,246,0.2)', icon:'⚡' },
+      pivot: { bg:'rgba(245,158,11,0.08)',  border:'rgba(245,158,11,0.2)',  icon:'🔄' },
+      idle:  { bg:'rgba(52,211,153,0.06)',  border:'rgba(52,211,153,0.15)', icon:'💭' },
+      info:  { bg:'rgba(139,92,246,0.06)',  border:'rgba(139,92,246,0.15)', icon:'✦' },
+    };
+    const c = colors[type] || colors.info;
+    const div = document.createElement('div');
+    div.className = 'msg msg-chicha monologue-msg';
+    div.innerHTML = `
+      <div class="msg-av" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">${c.icon}</div>
+      <div>
+        <div class="msg-bubble" style="background:${c.bg};border-color:${c.border};font-style:italic;color:#b0a0d0">
+          ${escapeAndFormat(text)}
+        </div>
+      </div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // ── Comeback detection ────────────────────────────────────────────────────
+  function checkComeback() {
+    const s = State.get();
+    if (!s.lastActiveDate) return;
+    const lastDate = new Date(s.lastActiveDate);
+    const today    = new Date();
+    const daysDiff = Math.floor((today - lastDate) / 86400000);
+    if (daysDiff >= 2) {
+      setTimeout(() => {
+        injectMonologue(`You're back after ${daysDiff} day${daysDiff>1?'s':''}. No judgment. But let's do a quick 60-second recap before we continue — just to make sure the last session didn't evaporate overnight. 🧠`, 'info');
+      }, 1500);
+    }
+  }
+
+  // ── Persistence ───────────────────────────────────────────────────────────
   function saveHistory() {
     try { sessionStorage.setItem(HIST_KEY, JSON.stringify(_history.slice(-24))); } catch(e) {}
   }
@@ -52,59 +158,61 @@ const Chat = (() => {
 
   // ── System prompt ─────────────────────────────────────────────────────────
   function systemPrompt() {
-    const s       = State.get();
-    const mood    = Mood.getTone();
-    const topic   = App.currentTopic();
+    const s        = State.get();
+    const mood     = Mood.getTone();
+    const topic    = App.currentTopic();
     const mastered = s.masteredConcepts.slice(-5).join(', ') || 'none yet';
     const concept  = _currentSpark?.concept || '';
-    const theory   = concept ? isTheory(concept) : false;
+    const theory   = isTheory(concept);
+    const plan     = getMasteryPlan(concept);
+    const diff     = getDifficultyTarget();
 
-    return `You are Chicha — a sharp, warm, slightly dry AI tutor specialising in ${topic}.
+    return `You are Chicha — a sharp, warm, slightly dry AI tutor for ${topic}.
 
-PERSONALITY: Brilliant friend who knows data. Vivid analogies, never textbook definitions. Never say "Great question!" or "Certainly!". Be direct. Max 220 words unless showing code.
+PERSONALITY: Brilliant friend who knows data. Vivid analogies. Direct. Dry humour. Never "Great question!" Never "Certainly!". Max 220 words unless showing code.
 
-MOOD TONE: ${mood}
+MOOD: ${mood}
+STUDENT: XP=${s.xp} | Streak=${s.streak} | Recently mastered: ${mastered}
+CONCEPT: "${concept}" | Type: ${plan.type} | Difficulty now: ${diff.level.toUpperCase()}
 
-STUDENT: XP=${s.xp} | Streak=${s.streak} | Mastered recently: ${mastered}
-
-CURRENT CONCEPT: "${concept}" ${theory ? '(THEORY — no SQL code)' : '(SQL command)'}
+━━━ DIFFICULTY GUIDE ━━━
+Easy: Basic recall, simple application
+Intermediate: Slightly modified scenario, combine with one other concept  
+Hard: ${theory ? 'Ask student to explain the concept back in their own words (no options)' : 'Edge case, tricky scenario, or "what happens if..." question'}
 
 ━━━ PRACTICE FLOW ━━━
-When student says "yes/sure/ok/ready/let's go" after "Ready to try one yourself?":
+When student says yes/sure/ready/ok/let's go:
 ${theory
-  ? `- Give ONE multiple choice question (MCQ) about "${concept}"
-- Format EXACTLY like this:
-  Question: [your question here]
-  (a) [option]
-  (b) [option]  
-  (c) [option]
-  (d) [option]
-- Make one option clearly correct, others plausible but wrong
-- Do NOT say [CORRECT] yet — wait for their answer`
-  : `- Give ONE specific SQL writing task about "${concept}"
-- Example: "Write a query to [do something with Indian data]"
-- Do NOT say [CORRECT] yet — wait for their actual SQL`
-}
+  ? `Give ONE MCQ at ${diff.level} difficulty:
+Question: [question]
+(a) [option]
+(b) [option]
+(c) [option]
+(d) [option]
+Do NOT say [CORRECT] yet.`
+  : `Give ONE SQL task at ${diff.level} difficulty using Indian data.
+Do NOT say [CORRECT] yet.`}
 
-━━━ SIGNAL RULES ━━━
-[AHA] → student says "ohh/I get it/that makes sense/so basically/clicked"
-[CORRECT] → ONLY when:
-  ${theory
-    ? '- Student picks the correct MCQ option (a/b/c/d) AND it is actually correct'
-    : '- Student writes SQL that correctly solves the task (not just "yes/sure")'}
-[WRONG] → student gives wrong MCQ answer OR incorrect SQL — diagnose WHY, do NOT give answer
+━━━ WRONG ANSWER HANDLING ━━━
+${diff.level === 'easy'
+  ? 'Easy question wrong → say [WRONG], give a hint and re-explain the specific part they got wrong. Ask same difficulty again.'
+  : 'Question wrong → say [WRONG], diagnose WHY without giving the answer. Ask a similar question.'}
 
-━━━ DONT KNOW RULE ━━━
-If "idk/no idea/not sure/give up/😭/🤷/:(":
-1. One sentence empathy
-2. One diagnostic question — WHERE are they stuck?
-3. STOP. Do not explain until they answer.
-4. NEVER give the answer directly.
+━━━ SIGNALS ━━━
+[AHA]     → "ohh/I get it/that makes sense/so basically/clicked"
+[CORRECT] → ONLY on actual correct answer (SQL/MCQ). NOT for "yes/sure/ok".
+[WRONG]   → Wrong answer given. Diagnose, don't solve.
 
-FORMAT: Backticks for inline code. Triple backticks for SQL blocks.`;
+━━━ DONT KNOW ━━━
+"idk/not sure/give up/:(":
+1. One empathy sentence
+2. One diagnostic question
+3. Stop. Wait for answer.
+
+FORMAT: Backticks inline, triple backticks for SQL.`;
   }
 
-  // ── UI helpers ────────────────────────────────────────────────────────────
+  // ── UI helpers ─────────────────────────────────────────────────────────────
   function appendMsg(role, text) {
     const msgs = document.getElementById('messages');
     const div  = document.createElement('div');
@@ -156,19 +264,19 @@ FORMAT: Backticks for inline code. Triple backticks for SQL blocks.`;
   }
   function removeTyping() { document.getElementById('typingIndicator')?.remove(); }
 
-  // ── API call ──────────────────────────────────────────────────────────────
+  // ── API call ───────────────────────────────────────────────────────────────
   async function callAI(userMsg) {
     const key = Auth.getKey();
     if (!key) throw new Error('No API key. Please log in again.');
     _history.push({ role: 'user', content: userMsg });
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${key}` },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         max_tokens: 700,
         messages: [
-          { role: 'system', content: systemPrompt() },
+          { role:'system', content: systemPrompt() },
           ..._history.slice(-12),
         ],
       }),
@@ -179,61 +287,145 @@ FORMAT: Backticks for inline code. Triple backticks for SQL blocks.`;
     }
     const data  = await res.json();
     const reply = data.choices[0].message.content;
-    _history.push({ role: 'assistant', content: reply });
+    _history.push({ role:'assistant', content: reply });
     if (_history.length > 24) _history = _history.slice(-24);
     return reply;
   }
 
-  // ── Signal processing ─────────────────────────────────────────────────────
+  // ── Signal processing ──────────────────────────────────────────────────────
   function processSignals(reply) {
+    const plan = getMasteryPlan(_currentSpark?.concept || '');
+
     if (reply.includes('[CORRECT]') && !_masteredThisSession) {
-      _masteredThisSession = true;
+      _correctThisConcept++;
       _correctStreak++;
       _wrongAttempts = 0;
       Mood.update(true);
       Face.correct(_correctStreak);
-      const xpEarned = 20 + Math.min(_correctStreak * 5, 30);
-      State.addXP(xpEarned);
-      if (_currentSpark?.concept) State.masterConcept(_currentSpark.concept);
+      State.addXP(10 + Math.min(_correctStreak * 3, 20));
       State.logSession({ topic: App.currentTopic(), concept: _currentSpark?.concept, correct: true });
       updateProgressUI();
-      // Show advance button after short delay
-      setTimeout(() => showAdvanceButton(), 1200);
+      showProgressDots(plan);
+      checkMonologue();
+
+      if (_correctThisConcept >= plan.total) {
+        // FULLY MASTERED
+        _masteredThisSession = true;
+        State.addXP(50); // mastery bonus
+        if (_currentSpark?.concept) State.masterConcept(_currentSpark.concept);
+        updateProgressUI();
+        setTimeout(() => showSessionSummary(plan), 800);
+      }
+
     } else if (reply.includes('[WRONG]')) {
-      _correctStreak = 0;
       _wrongAttempts++;
+      _correctStreak = 0;
       Mood.update(false);
       Face.wrong(_wrongAttempts);
       State.logSession({ topic: App.currentTopic(), concept: _currentSpark?.concept, correct: false });
       if (_currentSpark?.concept) State.logStruggle(_currentSpark.concept, reply.slice(0,80));
+      checkMonologue();
+
     } else if (reply.includes('[AHA]')) {
       if (_currentSpark?.concept) State.logAha(_currentSpark.concept, reply.slice(0,80));
       Face.aha();
     }
   }
 
-  // ── Show "Next concept" button after mastery ──────────────────────────────
-  function showAdvanceButton() {
+  // ── Progress dots ──────────────────────────────────────────────────────────
+  function showProgressDots(plan) {
+    document.getElementById('masteryToast')?.remove();
     const msgs = document.getElementById('messages');
     if (!msgs) return;
+
+    const done  = _correctThisConcept;
+    const total = plan.total;
+    const diff  = getDifficultyTarget();
+
+    // Build segmented dots: easy | intermediate | hard
+    const sections = [
+      { label:'Easy', count: plan.easy, color:'#34d399' },
+      { label:'Mid',  count: plan.intermediate, color:'#f59e0b' },
+      { label:'Hard', count: plan.hard, color:'#e8002d' },
+    ];
+
+    let filled = done;
+    const dots = sections.map(sec => {
+      const secDots = Array.from({length: sec.count}).map(() => {
+        const on = filled > 0;
+        if (on) filled--;
+        return `<div style="width:10px;height:10px;border-radius:50%;background:${on ? sec.color : '#1a1a2e'};box-shadow:${on ? `0 0 6px ${sec.color}` : 'none'};transition:all .3s;margin:0 2px"></div>`;
+      }).join('');
+      return `<div style="display:flex;align-items:center;gap:2px">${secDots}</div>
+              <div style="font-size:9px;color:#555;font-family:'JetBrains Mono',monospace;margin:0 4px">${sec.label}</div>`;
+    }).join('<div style="color:#2a2a4a;margin:0 4px">|</div>');
+
+    const div = document.createElement('div');
+    div.id = 'masteryToast';
+    div.style.cssText = 'display:flex;justify-content:center;padding:6px 0;';
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:4px;background:#0d0d1c;border:1px solid rgba(139,92,246,0.2);border-radius:20px;padding:7px 16px;">
+        ${dots}
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8b5cf6;margin-left:8px;">${done}/${total}</span>
+      </div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // ── Session summary card ───────────────────────────────────────────────────
+  function showSessionSummary(plan) {
+    const msgs = document.getElementById('messages');
+    if (!msgs) return;
+    const concept  = _currentSpark?.concept || 'concept';
     const topic    = App.currentTopic();
     const sections = CURRICULUM[topic] || [];
     const all      = sections.flatMap(s => s.concepts);
     const mastered = State.get().masteredConcepts;
     const next     = all.find(c => !mastered.includes(c));
+    const elapsed  = _sessionStartTime ? Math.round((Date.now() - _sessionStartTime) / 60000) : 0;
+    const xpEarned = plan.total * 10 + 50;
+
+    // Celebratory message based on concept difficulty
+    const celebrations = {
+      theory:  `You just built the foundation. Everything else in SQL sits on top of what you learned here.`,
+      simple:  `Clean and quick. Exactly how it should go.`,
+      medium:  `That wasn't trivial. ${plan.total} questions, you got through all of them.`,
+      complex: `That was a ${concept} question. Most people spend days on that. You're not most people.`,
+    };
+    const celebrate = celebrations[plan.type] || celebrations.medium;
 
     const div = document.createElement('div');
-    div.className = 'msg msg-chicha';
     div.id = 'advanceBtn';
+    div.className = 'msg msg-chicha';
     div.innerHTML = `
       <div class="msg-av">✦</div>
-      <div>
-        <div class="msg-bubble" style="background:rgba(52,211,153,0.08);border-color:rgba(52,211,153,0.25)">
-          <div style="color:#34d399;font-weight:700;margin-bottom:8px">✅ Concept mastered!</div>
+      <div style="width:100%">
+        <div class="msg-bubble" style="background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.25);padding:18px 20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <span style="font-size:28px">✅</span>
+            <div>
+              <div style="font-weight:700;font-size:16px;color:#34d399">Concept Mastered</div>
+              <div style="font-size:12px;color:#6b6b8a;font-family:'JetBrains Mono',monospace">${concept}</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+            <div style="background:#0a0a14;border-radius:8px;padding:10px;text-align:center">
+              <div style="font-size:18px;font-weight:700;color:#f59e0b">${plan.total}/${plan.total}</div>
+              <div style="font-size:10px;color:#555;font-family:'JetBrains Mono',monospace">correct</div>
+            </div>
+            <div style="background:#0a0a14;border-radius:8px;padding:10px;text-align:center">
+              <div style="font-size:18px;font-weight:700;color:#8b5cf6">+${xpEarned}</div>
+              <div style="font-size:10px;color:#555;font-family:'JetBrains Mono',monospace">XP earned</div>
+            </div>
+            <div style="background:#0a0a14;border-radius:8px;padding:10px;text-align:center">
+              <div style="font-size:18px;font-weight:700;color:#34d399">${elapsed || '<1'}m</div>
+              <div style="font-size:10px;color:#555;font-family:'JetBrains Mono',monospace">time taken</div>
+            </div>
+          </div>
+          <div style="font-size:13px;color:#9999bb;line-height:1.6;margin-bottom:14px;font-style:italic">"${celebrate}"</div>
           ${next
-            ? `<div style="font-size:13px;color:#aaa;margin-bottom:12px">Next up: <strong style="color:#e8e8f0">${next}</strong></div>
-               <button onclick="Chat.advanceToNext()" style="background:#34d399;color:#0a0a0a;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Continue → ${next}</button>`
-            : `<div style="font-size:13px;color:#aaa">🏆 You've mastered all concepts in this topic!</div>`
+            ? `<button onclick="Chat.advanceToNext()" style="width:100%;background:#34d399;color:#0a0a0a;border:none;padding:10px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.3px">Continue → ${next}</button>`
+            : `<div style="text-align:center;font-size:13px;color:#f59e0b;font-weight:600">🏆 You've mastered all concepts in ${topic}!</div>`
           }
         </div>
       </div>`;
@@ -241,13 +433,13 @@ FORMAT: Backticks for inline code. Triple backticks for SQL blocks.`;
     msgs.scrollTop = msgs.scrollHeight;
   }
 
-  // ── Progress UI update ────────────────────────────────────────────────────
+  // ── Progress UI ────────────────────────────────────────────────────────────
   function updateProgressUI() {
-    const s = State.get();
+    const s     = State.get();
+    const topic = App.currentTopic();
     const xpEl  = document.getElementById('psXp');
     const stEl  = document.getElementById('psStreak');
     const fill  = document.getElementById('psFill');
-    const topic = App.currentTopic();
     if (xpEl) xpEl.textContent = `${s.xp} XP`;
     if (stEl) stEl.textContent = s.streak > 0 ? `🔥 ${s.streak}` : '';
     if (fill) {
@@ -262,7 +454,7 @@ FORMAT: Backticks for inline code. Triple backticks for SQL blocks.`;
     App.syncSidebar();
   }
 
-  // ── Public API ────────────────────────────────────────────────────────────
+  // ── Public API ─────────────────────────────────────────────────────────────
   return {
     init() {
       _history             = loadHistory();
@@ -271,7 +463,10 @@ FORMAT: Backticks for inline code. Triple backticks for SQL blocks.`;
       _correctStreak       = 0;
       _practiceAsked       = false;
       _masteredThisSession = false;
+      _correctThisConcept  = 0;
+      _currentDifficulty   = 'easy';
       _mode                = 'chat';
+      _lastActivity        = Date.now();
       updateProgressUI();
       const restored = restoreMsgs();
       const sparkCard = document.getElementById('sparkCard');
@@ -280,6 +475,7 @@ FORMAT: Backticks for inline code. Triple backticks for SQL blocks.`;
         const welcome = document.getElementById('welcomeState');
         if (welcome) welcome.style.display = 'flex';
       }
+      checkComeback();
     },
 
     showSpark() {
@@ -298,6 +494,12 @@ FORMAT: Backticks for inline code. Triple backticks for SQL blocks.`;
       _mode                = 'spark';
       _practiceAsked       = false;
       _masteredThisSession = false;
+      _correctThisConcept  = 0;
+      _wrongAttempts       = 0;
+      _currentDifficulty   = 'easy';
+      _sessionStartTime    = Date.now();
+      _lastActivity        = Date.now();
+
       document.getElementById('sparkCard').style.display    = 'none';
       document.getElementById('messages').innerHTML         = '';
       document.getElementById('welcomeState').style.display = 'none';
@@ -307,11 +509,11 @@ FORMAT: Backticks for inline code. Triple backticks for SQL blocks.`;
 
       const concept = spark.concept || spark.title;
       const theory  = isTheory(concept);
+      const plan    = getMasteryPlan(concept);
 
       const msg = theory
         ? `Teach ONLY: "${concept}" — THEORY, no SQL code.
 
-Structure:
 **Step 1 — What is it?**
 One cricket/IPL/Bollywood analogy. Max 3 sentences.
 
@@ -322,22 +524,21 @@ One cricket/IPL/Bollywood analogy. Max 3 sentences.
 One Indian app example (Swiggy/IRCTC/Zomato/IPL). No code.
 
 End with exactly: "Ready to try one yourself? Just say yes."
-Do NOT show any SQL or code.`
+STRICT: No SQL. No code. Theory only.`
 
-        : `Teach ONLY: "${concept}" — SQL command.
-
-STRICT: Only syntax for "${concept}". Nothing else.
+        : `Teach ONLY: "${concept}" — SQL command. Complexity: ${plan.type}.
 
 **Step 1 — Analogy:**
 Cricket/IPL/Bollywood analogy. Zero code. Max 3 sentences.
 
 **Step 2 — Syntax:**
-ONE code block for "${concept}" only. Explain each line in one sentence.
+ONE code block for "${concept}" ONLY. Explain each line in one sentence.
 
 **Step 3 — Example:**
 ONE example with Indian data (3-4 lines max).
 
-End with exactly: "Ready to try one yourself? Just say yes."`;
+End with exactly: "Ready to try one yourself? Just say yes."
+STRICT: Only "${concept}" syntax. Nothing else.`;
 
       showTyping();
       try {
@@ -392,12 +593,12 @@ End with exactly: "Ready to try one yourself? Just say yes."`;
       if (!text) return;
       input.value = '';
       input.style.height = 'auto';
+      _lastActivity = Date.now();
 
       document.getElementById('welcomeState').style.display = 'none';
       const chatReady = document.getElementById('chatReadyState');
       if (chatReady) chatReady.style.display = 'none';
 
-      // Mark that student replied to "Ready?" — next Chicha response should give MCQ/task
       if (!_practiceAsked && /^(yes|sure|ok|okay|ready|let'?s go|yep|yeah|go)$/i.test(text.trim())) {
         _practiceAsked = true;
       }
@@ -417,7 +618,6 @@ End with exactly: "Ready to try one yourself? Just say yes."`;
       }
     },
 
-    // Advance to next concept after mastery
     advanceToNext() {
       const topic    = App.currentTopic();
       const sections = CURRICULUM[topic] || [];
@@ -426,15 +626,16 @@ End with exactly: "Ready to try one yourself? Just say yes."`;
       const next     = all.find(c => !mastered.includes(c));
       if (!next) return;
 
-      // Remove advance button
       document.getElementById('advanceBtn')?.remove();
+      document.getElementById('masteryToast')?.remove();
 
-      // Load next spark
       _currentSpark        = getSparkForTopic(topic);
       _masteredThisSession = false;
       _practiceAsked       = false;
+      _correctThisConcept  = 0;
+      _wrongAttempts       = 0;
+      _currentDifficulty   = 'easy';
 
-      // Update spark card
       const el = {
         title:   document.getElementById('sparkTitle'),
         body:    document.getElementById('sparkBody'),
@@ -446,7 +647,6 @@ End with exactly: "Ready to try one yourself? Just say yes."`;
       if (el.concept) el.concept.textContent  = _currentSpark.concept || '';
       if (el.topic)   el.topic.textContent    = `${topic} · ${_currentSpark.concept || ''}`;
 
-      // Start teaching next concept immediately
       Chat.startSpark();
     },
 
@@ -468,6 +668,9 @@ End with exactly: "Ready to try one yourself? Just say yes."`;
       _history             = [];
       _masteredThisSession = false;
       _practiceAsked       = false;
+      _correctThisConcept  = 0;
+      _wrongAttempts       = 0;
+      _currentDifficulty   = 'easy';
       sessionStorage.removeItem(HIST_KEY);
       sessionStorage.removeItem(MSG_KEY);
       document.getElementById('messages').innerHTML = '';
