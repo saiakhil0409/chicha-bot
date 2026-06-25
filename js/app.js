@@ -9,6 +9,7 @@ const App = (() => {
     launch() {
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('mainApp').classList.remove('hidden');
+      document.body.classList.add('app-open');
 
       Mood.init();
       Chat.init();
