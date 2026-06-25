@@ -175,39 +175,58 @@ MOOD: ${mood}
 STUDENT: XP=${s.xp} | Streak=${s.streak} | Recently mastered: ${mastered}
 CONCEPT: "${concept}" | Type: ${plan.type} | Difficulty now: ${diff.level.toUpperCase()}
 
+━━━ CONCEPT BOUNDARY — CRITICAL ━━━
+You are ONLY allowed to ask questions about "${concept}".
+FORBIDDEN topics (do NOT ask about these even if related):
+- Any concept not yet introduced in the curriculum
+- Relationships between tables (that's a JOIN concept)
+- Normalization (advanced concept)
+- Primary keys (that's CREATE TABLE concept)
+- Any SQL syntax unless concept IS a SQL command
+
+ALLOWED for "${concept}":
+${theory
+  ? `- What "${concept}" means
+- Why it exists
+- Real-world examples of "${concept}"
+- How to recognise "${concept}" in a scenario`
+  : `- Writing the syntax for "${concept}"
+- Identifying correct/incorrect usage of "${concept}"
+- Predicting the output of a "${concept}" query`}
+
 ━━━ DIFFICULTY GUIDE ━━━
-Easy: Basic recall, simple application
-Intermediate: Slightly modified scenario, combine with one other concept  
-Hard: ${theory ? 'Ask student to explain the concept back in their own words (no options)' : 'Edge case, tricky scenario, or "what happens if..." question'}
+Easy: Basic recall about "${concept}" only
+Intermediate: Slightly varied scenario, still only "${concept}"
+Hard: ${theory ? `Ask student to explain "${concept}" in their own words` : `Edge case or tricky scenario, still only "${concept}"`}
 
 ━━━ PRACTICE FLOW ━━━
 When student says yes/sure/ready/ok/let's go:
 ${theory
-  ? `Give ONE MCQ at ${diff.level} difficulty:
-Question: [question]
+  ? `Give ONE MCQ at ${diff.level} difficulty STRICTLY about "${concept}":
+Question: [question about "${concept}" ONLY]
 (a) [option]
 (b) [option]
 (c) [option]
 (d) [option]
 Do NOT say [CORRECT] yet.`
-  : `Give ONE SQL task at ${diff.level} difficulty using Indian data.
+  : `Give ONE SQL task at ${diff.level} difficulty about "${concept}" using Indian data.
 Do NOT say [CORRECT] yet.`}
 
 ━━━ WRONG ANSWER HANDLING ━━━
 ${diff.level === 'easy'
-  ? 'Easy question wrong → say [WRONG], give a hint and re-explain the specific part they got wrong. Ask same difficulty again.'
-  : 'Question wrong → say [WRONG], diagnose WHY without giving the answer. Ask a similar question.'}
+  ? `Easy wrong → say [WRONG], re-explain specifically what they got wrong about "${concept}". Ask same difficulty again.`
+  : `Wrong → say [WRONG], diagnose WHY without giving the answer. Ask similar question.`}
 
 ━━━ SIGNALS ━━━
 [AHA]     → "ohh/I get it/that makes sense/so basically/clicked"
-[CORRECT] → ONLY on actual correct answer (SQL/MCQ). NOT for "yes/sure/ok".
-[WRONG]   → Wrong answer given. Diagnose, don't solve.
+[CORRECT] → ONLY on actual correct answer. NOT for "yes/sure/ok".
+[WRONG]   → Wrong answer. Diagnose, don't solve.
 
 ━━━ DONT KNOW ━━━
 "idk/not sure/give up/:(":
 1. One empathy sentence
 2. One diagnostic question
-3. Stop. Wait for answer.
+3. Stop. Wait.
 
 FORMAT: Backticks inline, triple backticks for SQL.`;
   }
@@ -629,12 +648,15 @@ STRICT: Only "${concept}" syntax. Nothing else.`;
       document.getElementById('advanceBtn')?.remove();
       document.getElementById('masteryToast')?.remove();
 
+      // Clear history so AI starts fresh on new concept — no context bleed
+      _history             = [];
       _currentSpark        = getSparkForTopic(topic);
       _masteredThisSession = false;
       _practiceAsked       = false;
       _correctThisConcept  = 0;
       _wrongAttempts       = 0;
       _currentDifficulty   = 'easy';
+      _sessionStartTime    = Date.now();
 
       const el = {
         title:   document.getElementById('sparkTitle'),
