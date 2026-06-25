@@ -35,8 +35,9 @@ const Chat = (() => {
       if (saved && msgs && saved.length > 10) {
         msgs.innerHTML = saved;
         msgs.scrollTop = msgs.scrollHeight;
-        // Hide spark card if there were messages
         document.getElementById('sparkCard').style.display = 'none';
+        const backBar = document.getElementById('backToSparkBar');
+        if (backBar) backBar.style.display = 'block';
         return true;
       }
     } catch(e) {}
@@ -268,7 +269,7 @@ FORMAT: Use inline code with backticks. For SQL blocks use triple backticks with
       document.getElementById('messages').innerHTML = '';
       // Show back button
       const backBar = document.getElementById('backToSparkBar');
-      if (backBar) backBar.style.display = '';
+      if (backBar) backBar.style.display = 'block';
       // Collapse sidebar spark
       const sbCard = document.getElementById('sbSparkCard');
       if (sbCard) sbCard.classList.add('collapsed');
