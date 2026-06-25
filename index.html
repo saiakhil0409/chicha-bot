@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Chicha — Your Data Learning Friend</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ══ CHICHA FACE (reaction overlay) ══ -->
+<div id="chichFace" class="chicha-face hidden">
+  <div class="cf-inner">
+    <canvas id="faceCanvas" width="160" height="160"></canvas>
+    <div class="cf-text" id="cfText"></div>
+  </div>
+</div>
+
+<!-- ══ SURPRISE MODAL ══ -->
+<div id="surpriseOverlay" class="surprise-overlay hidden">
+  <div class="surprise-card">
+    <div class="surprise-gem">✦</div>
+    <div class="surprise-msg" id="surpriseMsg"></div>
+    <button class="surprise-btn" onclick="Surprise.dismiss()">Let's go →</button>
+  </div>
+</div>
+
+<!-- ══ BRAIN MAP OVERLAY ══ -->
+<div id="brainMapOverlay" class="brainmap-overlay hidden">
+  <div class="brainmap-header">
+    <span class="bm-title">✦ Your Brain Map</span>
+    <span class="bm-sub" id="bmSub">0 concepts mastered</span>
+    <button class="bm-close" onclick="BrainMap.close()">✕</button>
+  </div>
+  <canvas id="brainMapCanvas"></canvas>
+</div>
+
+<!-- ══ REPLAY OVERLAY ══ -->
+<div id="replayOverlay" class="replay-overlay hidden">
+  <div class="replay-card">
+    <div class="replay-header">
+      <span style="font-size:28px">⏪</span>
+      <h2 class="replay-title">Your Week in Review</h2>
+      <button class="bm-close" onclick="Replay.close()">✕</button>
+    </div>
+    <div id="replayContent" class="replay-content"></div>
+  </div>
+</div>
+
+<!-- ══ LOGIN ══ -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <div class="login-gem-wrap">
+      <div class="login-gem">✦</div>
+      <div class="login-gem-ring"></div>
+    </div>
+    <h1 class="login-title">Chicha</h1>
+    <p class="login-sub">Your personal data learning friend</p>
+    <div id="loginForm">
+      <div class="field-wrap">
+        <input type="password" id="pwInput" class="field-input" placeholder="Enter your password" autocomplete="off"
+          onkeydown="if(event.key==='Enter') Auth.doLogin()">
+        <button class="field-eye" onclick="Auth.togglePw('pwInput',this)">👁</button>
+      </div>
+      <button class="btn-primary" onclick="Auth.doLogin()">Open Chicha →</button>
+      <div class="login-error" id="loginError"></div>
+      <div class="login-divider">First time? <span class="link" onclick="Auth.toggleSetup()">Set up your Groq API key</span></div>
+    </div>
+    <div id="setupForm" style="display:none">
+      <div class="setup-steps">
+        <div class="setup-step"><span class="step-n">1</span>Go to <a href="https://console.groq.com" target="_blank">console.groq.com</a> → sign in free</div>
+        <div class="setup-step"><span class="step-n">2</span>API Keys → Create → copy the <code>gsk_...</code> key</div>
+        <div class="setup-step"><span class="step-n">3</span>Paste below and set a password</div>
+      </div>
+      <div class="field-wrap">
+        <input type="password" id="setupKey" class="field-input" placeholder="Paste Groq key (gsk_...)" autocomplete="off">
+        <button class="field-eye" onclick="Auth.togglePw('setupKey',this)">👁</button>
+      </div>
+      <div class="field-wrap">
+        <input type="password" id="setupPw" class="field-input" placeholder="Create a password (min 4 chars)" autocomplete="off">
+      </div>
+      <button class="btn-primary" onclick="Auth.doSetup()">Save & Wake Chicha →</button>
+      <div class="login-error" id="setupError"></div>
+      <div class="login-divider"><span class="link" onclick="Auth.toggleSetup()">← Back to login</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="mainApp" class="main-app hidden">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-gem" onclick="BrainMap.open()">✦</div>
+      <span class="brand-name">Chicha</span>
+      <span class="brand-dot" id="brandDot"></span>
+    </div>
+    <div class="topic-pills" id="topicPills">
+      <button class="tpill active" onclick="App.setTopic('SQL')">SQL</button>
+      <button class="tpill" onclick="App.setTopic('PowerBI')">Power BI</button>
+      <button class="tpill" onclick="App.setTopic('Tableau')">Tableau</button>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" onclick="Replay.open()" title="Week replay">⏪</button>
+      <button class="icon-btn" onclick="BrainMap.open()" title="Brain map">🧠</button>
+      <button class="icon-btn" onclick="App.toggleMenu()" id="menuBtn">≡</button>
+    </div>
+  </div>
+
+  <!-- Progress strip -->
+  <div class="progress-strip">
+    <span class="ps-topic" id="psTopic">SQL · Getting Started</span>
+    <div class="ps-bar"><div class="ps-fill" id="psFill" style="width:0%"></div></div>
+    <span class="ps-xp" id="psXp">0 XP</span>
+    <span class="ps-streak" id="psStreak"></span>
+  </div>
+
+  <!-- Chicha mood bar -->
+  <div class="mood-bar" id="moodBar">
+    <span class="mood-label">CHICHA IS</span>
+    <span class="mood-state" id="moodState">😊 Ready to teach</span>
+  </div>
+
+  <!-- Side menu drawer -->
+  <div class="side-drawer hidden" id="sideDrawer">
+    <div class="sd-section">
+      <div class="sd-label">TOPICS</div>
+      <div class="sd-item active" onclick="App.setTopic('SQL');App.toggleMenu()"><span>🗄</span>SQL</div>
+      <div class="sd-item" onclick="App.setTopic('PowerBI');App.toggleMenu()"><span>📊</span>Power BI</div>
+      <div class="sd-item" onclick="App.setTopic('Tableau');App.toggleMenu()"><span>📈</span>Tableau</div>
+    </div>
+    <div class="sd-section">
+      <div class="sd-label">FEATURES</div>
+      <div class="sd-item" onclick="BrainMap.open();App.toggleMenu()"><span>🧠</span>Brain Map</div>
+      <div class="sd-item" onclick="Replay.open();App.toggleMenu()"><span>⏪</span>Week Replay</div>
+      <div class="sd-item" onclick="App.showPanel('curriculum');App.toggleMenu()"><span>📖</span>Curriculum</div>
+      <div class="sd-item" onclick="App.showPanel('notes');App.toggleMenu()"><span>📝</span>Notes</div>
+    </div>
+    <div class="sd-section sd-bottom">
+      <div class="sd-item" onclick="Auth.logout()"><span>🚪</span>Logout</div>
+    </div>
+  </div>
+  <div class="drawer-backdrop hidden" id="drawerBackdrop" onclick="App.toggleMenu()"></div>
+
+  <!-- Main panels -->
+  <div class="panels-wrap">
+
+    <!-- Chat panel -->
+    <div class="panel active" id="chatPanel">
+      <!-- Spark card -->
+      <div class="spark-card" id="sparkCard">
+        <div class="spark-top">
+          <span class="spark-badge">✦ TODAY'S SPARK</span>
+          <span class="spark-concept" id="sparkConcept">Loading…</span>
+        </div>
+        <div class="spark-title" id="sparkTitle">Waking up Chicha…</div>
+        <div class="spark-body" id="sparkBody"></div>
+        <div class="spark-actions">
+          <button class="btn-primary spark-go" onclick="Chat.startSpark()">Start Learning →</button>
+          <button class="btn-ghost" onclick="Chat.surpriseSpark()">🎲 Surprise me</button>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div class="messages" id="messages"></div>
+    </div>
+
+    <!-- Curriculum panel -->
+    <div class="panel" id="curriculumPanel">
+      <div class="panel-header"><h2>📖 Curriculum</h2></div>
+      <div id="curriculumContent" class="curriculum-content"></div>
+    </div>
+
+    <!-- Notes panel -->
+    <div class="panel" id="notesPanel">
+      <div class="panel-header">
+        <h2>📝 Notes</h2>
+        <button class="btn-ghost-sm" onclick="Notes.add()">+ New</button>
+      </div>
+      <div id="notesContent" class="notes-content"></div>
+    </div>
+
+  </div>
+
+  <!-- Bottom nav (mobile) -->
+  <div class="bottom-nav">
+    <button class="bnav-item active" onclick="App.showPanel('chat')" id="bnav-chat">
+      <span class="bnav-icon">💬</span><span class="bnav-label">Chat</span>
+    </button>
+    <button class="bnav-item" onclick="BrainMap.open()" id="bnav-brain">
+      <span class="bnav-icon">🧠</span><span class="bnav-label">Brain Map</span>
+    </button>
+    <button class="bnav-item" onclick="Replay.open()" id="bnav-replay">
+      <span class="bnav-icon">⏪</span><span class="bnav-label">Replay</span>
+    </button>
+    <button class="bnav-item" onclick="App.toggleMenu()" id="bnav-more">
+      <span class="bnav-icon">≡</span><span class="bnav-label">More</span>
+    </button>
+  </div>
+
+  <!-- Input bar -->
+  <div class="input-bar" id="inputBar">
+    <div class="input-wrap">
+      <textarea id="userInput" class="input-field" rows="1"
+        placeholder='Ask Chicha anything…'
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();Chat.send()}"></textarea>
+    </div>
+    <button class="input-btn mic-btn" id="micBtn" onclick="Voice.toggle()">🎤</button>
+    <button class="input-btn send-btn" onclick="Chat.send()">↑</button>
+  </div>
+
+</div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+<script src="js/state.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/curriculum.js"></script>
+<script src="js/face.js"></script>
+<script src="js/brainmap.js"></script>
+<script src="js/replay.js"></script>
+<script src="js/surprise.js"></script>
+<script src="js/mood.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/notes.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
