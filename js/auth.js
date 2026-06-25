@@ -44,7 +44,7 @@ const Auth = (() => {
         const store = getStore();
         store.sessionToken = token;
         localStorage.setItem(STORE_KEY, JSON.stringify(store));
-        App.launch();
+        window.location.reload();
       } catch { err('loginError', 'Wrong password.'); }
     },
 
@@ -53,7 +53,7 @@ const Auth = (() => {
       const pw  = document.getElementById('setupPw').value.trim();
       if (!key) { err('setupError', 'Paste your Groq API key first.'); return; }
       if (!key.startsWith('gsk_') && !key.startsWith('sk-')) {
-        err('setupError', 'Key must start with gsk_ (Groq) or sk- (OpenAI). Check you copied the full key.'); return;
+        err('setupError', 'Key must start with gsk_ (Groq). Check you copied the full key.'); return;
       }
       if (pw.length < 4) { err('setupError', 'Password must be at least 4 characters.'); return; }
       try {
@@ -62,9 +62,10 @@ const Auth = (() => {
         sessionStorage.setItem('chicha_token', token);
         sessionStorage.setItem('chicha_pw', pw);
         localStorage.setItem(STORE_KEY, JSON.stringify({ apiKey: encrypted, sessionToken: token }));
-        App.launch();
+        // Reload page — app.js boot script will detect login and launch
+        window.location.reload();
       } catch(e) {
-        err('setupError', 'Something went wrong: ' + e.message);
+        err('setupError', 'Encryption failed: ' + e.message);
       }
     },
 
@@ -97,7 +98,7 @@ const Auth = (() => {
       sessionStorage.setItem('chicha_token', token);
       sessionStorage.setItem('chicha_pw', pw);
       localStorage.setItem('chicha_auth', JSON.stringify({ apiKey: encrypted, sessionToken: token }));
-      App.launch();
+      window.location.reload();
     },
 
     toggleSetup() {
