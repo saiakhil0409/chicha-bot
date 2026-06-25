@@ -13,6 +13,7 @@ const App = (() => {
 
       Mood.init();
       Chat.init();
+      Roadmap.init();
 
       _topic = State.get().topic || 'SQL';
       App.setTopic(_topic, true);
@@ -43,6 +44,7 @@ const App = (() => {
       Chat.loadSpark(topic);
       App.renderCurriculum();
       App.syncSidebar();
+      Roadmap.refresh();
 
       if (!silent) App.showPanel('chat');
     },
