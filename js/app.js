@@ -85,7 +85,26 @@ const App = (() => {
 
     backToSpark() { Chat.backToSpark(); },
 
-    toggleMenu() {
+    resetProgress() {
+      const confirmed = window.confirm(
+        'Reset all progress?\n\nThis clears your XP, streak, mastered concepts and chat history. Your API key and password are kept.\n\nThis cannot be undone.'
+      );
+      if (!confirmed) return;
+      // Clear state
+      localStorage.removeItem('chicha_v2_state');
+      // Clear chat session
+      sessionStorage.removeItem('chicha_chat_history');
+      sessionStorage.removeItem('chicha_chat_msgs');
+      // Clear surprise flags so they show again
+      localStorage.removeItem('chicha_d0');
+      localStorage.removeItem('chicha_d1');
+      localStorage.removeItem('chicha_s3');
+      localStorage.removeItem('chicha_s7');
+      localStorage.removeItem('chicha_xp1k');
+      localStorage.removeItem('chicha_surprise_seen');
+      // Reload the app fresh
+      window.location.reload();
+    },
       _menuOpen = !_menuOpen;
       document.getElementById('sideDrawer').classList.toggle('hidden', !_menuOpen);
       document.getElementById('drawerBackdrop').classList.toggle('hidden', !_menuOpen);
