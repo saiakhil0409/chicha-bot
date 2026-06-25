@@ -27,13 +27,38 @@ const CURRICULUM = {
 const SPARKS = {
   'SELECT basics': {
     title: 'The waiter who brings everything',
-    analogy: 'SELECT * is like telling a waiter "bring me everything on the menu." SELECT name, age is like saying "just the pasta and the wine."',
-    concept: 'SELECT',
+    analogy: 'SELECT * is like telling a waiter "bring me everything on the menu." SELECT name, age is like saying "just the pasta and the wine." You tell the database exactly what you want to see.',
+    concept: 'SELECT basics',
+  },
+  'SELECT columns': {
+    title: 'The waiter who brings everything',
+    analogy: 'SELECT * is like telling a waiter "bring me everything on the menu." SELECT name, age is like saying "just the pasta and the wine." You tell the database exactly what you want to see.',
+    concept: 'SELECT columns',
   },
   'WHERE filtering': {
     title: 'The bouncer at the door',
-    analogy: 'WHERE is the bouncer. Every row knocks on the door, and only the ones that match the condition get in. Strict but fair.',
-    concept: 'WHERE',
+    analogy: 'WHERE is the bouncer. Every row knocks on the door, and only the ones that match the condition get in. WHERE age > 18 means only adults pass. Strict but fair.',
+    concept: 'WHERE filtering',
+  },
+  'ORDER BY': {
+    title: 'The sorting hat',
+    analogy: 'ORDER BY is like asking a librarian to arrange books. ASC means A to Z or smallest to largest. DESC flips it — biggest or latest first. The data stays the same, just the arrangement changes.',
+    concept: 'ORDER BY',
+  },
+  'LIMIT': {
+    title: 'The top 3 finishers',
+    analogy: 'LIMIT is like saying "just give me the podium" — you have 20 race results but you only want the top 3. LIMIT 3 cuts the rest off. Simple, powerful.',
+    concept: 'LIMIT',
+  },
+  'DISTINCT': {
+    title: 'One per team please',
+    analogy: 'DISTINCT removes duplicates. If 5 drivers are from Red Bull, SELECT DISTINCT team gives you "Red Bull" once — not five times. Like calling attendance and ticking each name only once.',
+    concept: 'DISTINCT',
+  },
+  'Column aliases': {
+    title: 'Rename on the fly',
+    analogy: 'AS is a nickname. SELECT name AS driver_name gives the column a new label in your results. The data doesn\'t change — you\'re just giving it a cleaner name for the report.',
+    concept: 'Column aliases',
   },
   'INNER JOIN': {
     title: 'Two tables walk into a pit lane…',
@@ -77,17 +102,23 @@ const SPARKS = {
   },
 };
 
-// Get a spark for the current topic — either curated or random
-function getSparkForTopic(topic) {
-  const sections = CURRICULUM[topic] || CURRICULUM.SQL;
-  const allConcepts = sections.flatMap(s => s.concepts);
-  const mastered = State.get().masteredConcepts;
-  // Prefer unmastered
-  const unmastered = allConcepts.filter(c => !mastered.includes(c));
-  const pool = unmastered.length > 0 ? unmastered : allConcepts;
-  const concept = pool[Math.floor(Math.random() * pool.length)];
+// Get next spark in curriculum order — first unmastered concept
+// surpriseMode=true picks randomly from unmastered (for Surprise me button)
+function getSparkForTopic(topic, surpriseMode = false) {
+  const sections    = CURRICULUM[topic] || CURRICULUM.SQL;
+  const allConcepts = sections.flatMap(s => s.concepts); // ordered
+  const mastered    = State.get().masteredConcepts;
+  const unmastered  = allConcepts.filter(c => !mastered.includes(c));
+  const pool        = unmastered.length > 0 ? unmastered : allConcepts;
+
+  // Default: pick the FIRST unmastered (curriculum order)
+  // Surprise: pick randomly from unmastered
+  const concept = surpriseMode
+    ? pool[Math.floor(Math.random() * pool.length)]
+    : pool[0];
+
   return SPARKS[concept] || {
-    title: `Let's explore: ${concept}`,
+    title:   `Let's explore: ${concept}`,
     analogy: `Today Chicha is going to walk you through ${concept}. Ask anything — no question is too basic.`,
     concept: concept,
   };
