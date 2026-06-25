@@ -606,28 +606,28 @@ code { font-family: var(--mono); color: #a78bfa; font-size: 0.9em; }
 
 .sb-divider { height: 1px; background: var(--border); margin: 0 14px; }
 
-.sb-section { padding: 12px 14px; }
+.sb-section { padding: 8px 12px; }
 .sb-label {
   font-family: var(--mono); font-size: 9px; color: var(--muted2);
-  letter-spacing: 2px; margin-bottom: 8px; display: block;
+  letter-spacing: 2px; margin-bottom: 6px; display: block;
 }
 .sb-item {
   display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; border-radius: 8px; cursor: pointer;
-  font-size: 12px; color: var(--muted); margin-bottom: 2px;
+  padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  font-size: 12px; color: var(--muted); margin-bottom: 1px;
   transition: all 0.15s;
 }
 .sb-item:hover { background: var(--violet-lo); color: var(--violet); }
 .sb-item.active { background: var(--violet-lo); color: var(--violet); }
-.sb-item-icon { font-size: 14px; width: 20px; text-align: center; }
+.sb-item-icon { font-size: 13px; width: 18px; text-align: center; }
 
 .sb-progress-item {
-  margin: 0 14px 10px;
+  margin: 0 0 8px;
   background: var(--surface2);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px;
+  border-radius: 8px;
+  padding: 8px 10px;
 }
-.sb-progress-topic { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
-.sb-prog-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.sb-progress-topic { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 4px; display: flex; justify-content: space-between; }
+.sb-prog-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
 .sb-prog-fill { height: 100%; border-radius: 2px; }
