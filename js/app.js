@@ -59,6 +59,26 @@ const App = (() => {
       if (name === 'notes') Notes.render();
     },
 
+    toggleSpark() {
+      const card = document.getElementById('sbSparkCard');
+      if (card) card.classList.toggle('collapsed');
+    },
+
+    backToSpark() {
+      // Clear chat messages
+      document.getElementById('messages').innerHTML = '';
+      sessionStorage.removeItem('chicha_chat_msgs');
+      sessionStorage.removeItem('chicha_chat_history');
+      // Show spark card again
+      const sparkCard = document.getElementById('sparkCard');
+      if (sparkCard) sparkCard.style.display = '';
+      // Hide back button
+      document.getElementById('backToSparkBar').style.display = 'none';
+      // Re-expand sidebar spark
+      const sbCard = document.getElementById('sbSparkCard');
+      if (sbCard) sbCard.classList.add('collapsed');
+    },
+
     toggleMenu() {
       _menuOpen = !_menuOpen;
       document.getElementById('sideDrawer').classList.toggle('hidden', !_menuOpen);
