@@ -6,7 +6,7 @@ const Visualizer = (() => {
   const DEFS = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>`;
 
   function svg(height, content) {
-    return `<svg width="100%" viewBox="0 0 680 ${height}" role="img" style="margin-top:10px">${DEFS}${content}</svg>`;
+    return `<div class="viz-svg-wrap"><svg width="100%" viewBox="0 0 680 ${height}" role="img" style="display:block">${DEFS}${content}</svg></div>`;
   }
 
   function pill(x, y, w, text, color) {
@@ -41,40 +41,57 @@ const Visualizer = (() => {
   // ── THEORY DIAGRAMS ───────────────────────────────────────────────────────
   const THEORY = {
 
-    'What is a Database': () => svg(420, `
-      <text class="th" x="340" y="28" text-anchor="middle" style="font-size:15px">What is a Database?</text>
-      <text class="ts" x="340" y="48" text-anchor="middle">An organised container for all your data tables</text>
-      <rect x="180" y="65" width="320" height="260" rx="16" fill="rgba(139,92,246,0.08)" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="6 3"/>
-      <text class="th" x="340" y="92" text-anchor="middle" style="fill:#a78bfa">DATABASE</text>
-      <rect x="198" y="104" width="130" height="80" rx="8" fill="rgba(139,92,246,0.12)" stroke="rgba(139,92,246,0.3)" stroke-width="0.5"/>
-      <text class="th" x="263" y="120" text-anchor="middle" style="fill:#a78bfa">Customers</text>
-      <text class="ts" x="206" y="138">id  name    city</text>
-      <text class="ts" x="206" y="154">1   Rohit   Mumbai</text>
-      <text class="ts" x="206" y="170">2   Priya   Delhi</text>
-      <rect x="352" y="104" width="130" height="80" rx="8" fill="rgba(245,158,11,0.1)" stroke="rgba(245,158,11,0.3)" stroke-width="0.5"/>
-      <text class="th" x="417" y="120" text-anchor="middle" style="fill:#f59e0b">Orders</text>
-      <text class="ts" x="360" y="138">id  item    amt</text>
-      <text class="ts" x="360" y="154">101 Biryani ₹180</text>
-      <text class="ts" x="360" y="170">102 Dosa    ₹80</text>
-      <rect x="198" y="200" width="130" height="80" rx="8" fill="rgba(52,211,153,0.08)" stroke="rgba(52,211,153,0.25)" stroke-width="0.5"/>
-      <text class="th" x="263" y="216" text-anchor="middle" style="fill:#34d399">Products</text>
-      <text class="ts" x="206" y="234">id  name    price</text>
-      <text class="ts" x="206" y="250">1   Biryani ₹180</text>
-      <text class="ts" x="206" y="266">2   Dosa    ₹80</text>
-      <rect x="352" y="200" width="130" height="80" rx="8" fill="rgba(248,113,113,0.08)" stroke="rgba(248,113,113,0.25)" stroke-width="0.5"/>
-      <text class="th" x="417" y="216" text-anchor="middle" style="fill:#f87171">Delivery</text>
-      <text class="ts" x="360" y="234">id  status  eta</text>
-      <text class="ts" x="360" y="250">1   OnWay   5m</text>
-      <text class="ts" x="360" y="266">2   Done    -</text>
-      <text class="ts" x="340" y="344" text-anchor="middle" style="fill:#8b5cf6">All these tables together = one Database</text>
-      ${['Swiggy App','Mobile App','Web Users','Excel/CSV'].map((s,i)=>`
-        <rect x="20" y="${100+i*55}" width="110" height="30" rx="8" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="0.5"/>
-        <text class="ts" x="75" y="${119+i*55}" text-anchor="middle">${s}</text>
-        <line x1="130" y1="${115+i*55}" x2="178" y2="${200}" stroke="rgba(139,92,246,0.4)" stroke-width="1" marker-end="url(#arrow)" fill="none"/>
-      `).join('')}
-      <text class="ts" x="154" y="215" text-anchor="middle" style="fill:#8b5cf6">DATA</text>
-      ${[['Find instantly','52,211,153'],['Stay organised','139,92,246'],['Many users safe','245,158,11']].map(([t,c],i)=>pill(40+i*200,368,180,t,c)).join('')}
-    `),
+    'What is a Database': () => `
+      <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:4px">What is a Database?</div>
+      <div style="font-size:12px;color:#6b6b8a;text-align:center;margin-bottom:16px">An organised collection of data — stored, accessed, managed, updated</div>
+
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+
+        <!-- Data sources -->
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:120px">
+          ${['Swiggy App','Mobile App','Web Users','Excel/CSV'].map((s,i)=>`
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 12px;font-size:12px;color:#9999bb;text-align:center;animation:fadeInUp 0.3s ${i*0.1}s both">${s}</div>
+          `).join('')}
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8b5cf6;text-align:center;margin-top:4px">↓ DATA</div>
+        </div>
+
+        <!-- Arrow -->
+        <div style="font-size:24px;color:rgba(139,92,246,0.5)">→</div>
+
+        <!-- Database container -->
+        <div style="flex:1;border:1.5px dashed #8b5cf6;border-radius:16px;padding:16px;background:rgba(139,92,246,0.05);min-width:280px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#a78bfa;letter-spacing:3px;text-align:center;margin-bottom:12px">DATABASE</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            ${[
+              {name:'Customers',color:'139,92,246',rows:['id · name · city','1 · Rohit · Mumbai','2 · Priya · Delhi']},
+              {name:'Orders',color:'245,158,11',rows:['id · item · amt','101 · Biryani · ₹180','102 · Dosa · ₹80']},
+              {name:'Products',color:'52,211,153',rows:['id · name · price','1 · Biryani · ₹180','2 · Dosa · ₹80']},
+              {name:'Delivery',color:'248,113,113',rows:['id · status · eta','1 · OnWay · 5m','2 · Done · —']},
+            ].map((t,i)=>`
+              <div style="background:rgba(${t.color},0.08);border:1px solid rgba(${t.color},0.3);border-radius:8px;padding:10px;animation:fadeInUp 0.4s ${0.1+i*0.1}s both">
+                <div style="font-weight:700;font-size:12px;color:rgba(${t.color},1);margin-bottom:6px">${t.name}</div>
+                ${t.rows.map((r,ri)=>`<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${ri===0?`rgba(${t.color},0.7)`:'#9999bb'};padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.04)">${r}</div>`).join('')}
+              </div>`).join('')}
+          </div>
+          <div style="text-align:center;font-size:11px;color:#8b5cf6;margin-top:10px;font-family:'JetBrains Mono',monospace">All tables together = one Database</div>
+        </div>
+      </div>
+
+      <!-- Why section -->
+      <div style="margin-top:16px">
+        <div style="font-size:11px;color:#6b6b8a;text-align:center;margin-bottom:10px;font-family:'JetBrains Mono',monospace;letter-spacing:2px">WHY USE A DATABASE?</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          ${[
+            {icon:'🔍',label:'Find instantly',color:'52,211,153'},
+            {icon:'📁',label:'Stay organised',color:'139,92,246'},
+            {icon:'👥',label:'Many users safely',color:'245,158,11'},
+          ].map((b,i)=>`
+            <div style="background:rgba(${b.color},0.08);border:1px solid rgba(${b.color},0.25);border-radius:10px;padding:10px;text-align:center;animation:fadeInUp 0.4s ${0.4+i*0.1}s both">
+              <div style="font-size:20px;margin-bottom:4px">${b.icon}</div>
+              <div style="font-size:11px;color:rgba(${b.color},1)">${b.label}</div>
+            </div>`).join('')}
+        </div>
+      </div>`,
 
     'What is a Table': () => svg(380, `
       <text class="th" x="340" y="28" text-anchor="middle" style="font-size:15px">What is a Table?</text>
@@ -777,15 +794,21 @@ const Visualizer = (() => {
       if (!fn) return;
       const msgs = document.getElementById('messages');
       if (!msgs) return;
-      const div = document.createElement('div');
-      div.className = 'msg msg-chicha';
-      div.innerHTML = `
-        <div class="msg-av" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">📊</div>
-        <div style="width:100%">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#555;letter-spacing:2px;margin-bottom:6px">VISUAL BREAKDOWN</div>
-          ${fn()}
+
+      // Render as full-width card — NOT inside a chat bubble
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'width:100%;margin:8px 0;animation:fadeInUp 0.4s ease both';
+      wrapper.innerHTML = `
+        <div style="background:#0a0a18;border:1px solid rgba(139,92,246,0.25);border-radius:14px;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(139,92,246,0.08);border-bottom:1px solid rgba(139,92,246,0.15)">
+            <span style="font-size:16px">📊</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8b5cf6;letter-spacing:3px">VISUAL BREAKDOWN</span>
+          </div>
+          <div style="padding:16px;overflow-x:auto">
+            ${fn()}
+          </div>
         </div>`;
-      msgs.appendChild(div);
+      msgs.appendChild(wrapper);
       msgs.scrollTop = msgs.scrollHeight;
     },
   };
