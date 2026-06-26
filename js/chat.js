@@ -372,7 +372,30 @@ Never break character. Never use bullet points unless listing options. Just talk
     return reply;
   }
 
-  // ── Signal processing ──────────────────────────────────────────────────────
+  // ── Sanitise AI reply — strip phrases Chicha shouldn't say ──────────────────
+  function sanitiseReply(reply) {
+    if (!reply.includes('[CORRECT]')) return reply;
+    // Strip any sentence mentioning next topic/step/concept/table/database after CORRECT
+    const sentences = reply.split(/(?<=[.!?])\s+/);
+    const filtered = sentences.filter(s => {
+      const l = s.toLowerCase();
+      return !(
+        l.includes('next topic') ||
+        l.includes('next step') ||
+        l.includes('next concept') ||
+        l.includes('next up') ||
+        l.includes('let\'s move') ||
+        l.includes("let's move") ||
+        l.includes('move on') ||
+        l.includes('proceed to') ||
+        l.includes('ready to proceed') ||
+        l.includes('just say yes to proceed') ||
+        l.includes('shall we move') ||
+        l.includes('ready for the next')
+      );
+    });
+    return filtered.join(' ').trim();
+  }
   function processSignals(reply) {
     const plan = getMasteryPlan(_currentSpark?.concept || '');
     if (reply.includes('[CORRECT]') && !_masteredThisSession) {
@@ -658,7 +681,8 @@ STRICT: Only "${concept}" syntax. No other SQL concepts.`;
       try {
         const reply=await callAI(msg,'lesson');
         removeTyping();
-        appendMsg('chicha',reply);
+        const cleanReply = sanitiseReply(reply);
+        appendMsg('chicha',cleanReply);
         _practiceAsked=false;
         Visualizer.tryInject(concept);
         saveHistory();saveMsgs();
@@ -728,10 +752,11 @@ STRICT: Only "${concept}" syntax. No other SQL concepts.`;
       try {
         const reply=await callAI(text,_gear);
         removeTyping();
-        appendMsg('chicha',reply);
+        const cleanReply = sanitiseReply(reply);
+        appendMsg('chicha',cleanReply);
 
         // Only process signals in lesson gear
-        if(_gear==='lesson') processSignals(reply);
+        if(_gear==='lesson') processSignals(cleanReply);
 
         // Return to lesson gear after friend response
         if(_gear==='friend') _gear='lesson';
