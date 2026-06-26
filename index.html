@@ -262,6 +262,16 @@
 
     <!-- Chat panel -->
     <div class="panel active" id="chatPanel">
+
+      <!-- Concept header — always visible during lesson, updates when concept changes -->
+      <div id="conceptHeader" style="display:none;position:sticky;top:0;z-index:11;background:#0a0a14;border-bottom:1px solid #1a1a2e;padding:10px 16px;align-items:center;gap:10px;">
+        <div style="display:flex;flex-direction:column;flex:1">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#555;letter-spacing:2px;margin-bottom:2px" id="conceptHeaderTopic">SQL</div>
+          <div style="font-size:14px;font-weight:700;color:#e8e8f0" id="conceptHeaderName">—</div>
+        </div>
+        <div id="conceptHeaderProgress" style="display:flex;gap:3px;align-items:center"></div>
+      </div>
+
       <!-- Back to spark button -->
       <div id="backToSparkBar" style="visibility:hidden;padding:8px 14px;border-bottom:1px solid #1a1a2e;background:#0d0d1c;position:sticky;top:0;z-index:10;">
         <button onclick="App.backToSpark()" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#a78bfa;padding:6px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'JetBrains Mono',monospace;letter-spacing:1px;">
