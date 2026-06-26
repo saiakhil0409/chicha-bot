@@ -282,6 +282,7 @@ FORBIDDEN: SQL syntax, relationships, keys, normalization, any SQL commands.`
 FORBIDDEN: anything outside "${concept}" scope.`}
 
 DIFFICULTY NOW: ${diff.level.toUpperCase()} (${_correctThisConcept}/${plan.total} toward mastery)
+${_correctThisConcept === plan.total - 1 ? `⚠ THIS IS THE FINAL QUESTION. If student answers correctly, say [CORRECT] + one short celebration sentence. DO NOT ask another question. The system will handle what comes next.` : ''}
 
 PRACTICE:
 When student says yes/sure/ready/ok:
@@ -382,12 +383,20 @@ Never break character. Never use bullet points unless listing options. Just talk
       updateProgressUI();
       showProgressDots(plan);
       checkMonologue();
+
       if (_correctThisConcept >= plan.total) {
+        // MASTERED — block input, show summary
         _masteredThisSession = true;
         State.addXP(50);
         if (_currentSpark?.concept) State.masterConcept(_currentSpark.concept);
         updateProgressUI();
         Roadmap.refresh();
+        // Block input bar so user can't keep chatting — must click Continue
+        const inputBar = document.getElementById('userInput');
+        if (inputBar) {
+          inputBar.disabled = true;
+          inputBar.placeholder = 'Click "Continue" above to proceed →';
+        }
         setTimeout(() => showSessionSummary(plan), 800);
       }
     } else if (reply.includes('[WRONG]')) {
@@ -706,6 +715,12 @@ STRICT: Only "${concept}" syntax. No other SQL concepts.`;
       if(!next) return;
       document.getElementById('advanceBtn')?.remove();
       document.getElementById('masteryToast')?.remove();
+      // Re-enable input bar
+      const inputBar = document.getElementById('userInput');
+      if (inputBar) {
+        inputBar.disabled = false;
+        inputBar.placeholder = 'Reply to Chicha…';
+      }
       _history=[];
       _currentSpark=getSparkForTopic(topic);
       _masteredThisSession=false;_practiceAsked=false;
