@@ -745,3 +745,29 @@ code { font-family: var(--mono); color: #a78bfa; font-size: 0.9em; }
   25%      { transform: translateX(-4px); }
   75%      { transform: translateX(4px); }
 }
+
+/* ── VISUALIZER IMPROVEMENTS ─────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Make SVG diagrams full width and readable */
+.viz-svg-wrap svg {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 200px;
+}
+
+/* SVG text styles applied via class */
+svg .th {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  fill: #e8e8f0;
+}
+svg .ts {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  fill: #9999bb;
+}
