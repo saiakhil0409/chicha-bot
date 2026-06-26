@@ -416,6 +416,7 @@ Never break character. Never use bullet points unless listing options. Just talk
   // ── Progress dots ──────────────────────────────────────────────────────────
   function showProgressDots(plan) {
     document.getElementById('masteryToast')?.remove();
+    updateConceptHeader(); // refresh dots in header too
     const msgs = document.getElementById('messages');
     if (!msgs) return;
     const sections = [
@@ -492,6 +493,33 @@ Never break character. Never use bullet points unless listing options. Just talk
       </div>`;
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // ── Concept header ─────────────────────────────────────────────────────────
+  function updateConceptHeader() {
+    const concept = _currentSpark?.concept || '';
+    const topic   = App.currentTopic();
+    const plan    = getMasteryPlan(concept);
+    const header  = document.getElementById('conceptHeader');
+    const nameEl  = document.getElementById('conceptHeaderName');
+    const topicEl = document.getElementById('conceptHeaderTopic');
+    const progEl  = document.getElementById('conceptHeaderProgress');
+    if (!header || !nameEl || !concept) return;
+    header.style.display = 'flex';
+    nameEl.textContent   = concept;
+    if (topicEl) topicEl.textContent = topic.toUpperCase();
+    // Mini progress dots
+    if (progEl) {
+      const colors = ['#34d399','#f59e0b','#e8002d'];
+      const counts = [plan.easy, plan.intermediate, plan.hard];
+      let filled = _correctThisConcept;
+      progEl.innerHTML = counts.map((count, ci) =>
+        Array.from({length: count}).map(() => {
+          const on = filled > 0; if (on) filled--;
+          return `<div style="width:8px;height:8px;border-radius:50%;background:${on?colors[ci]:'#1a1a2e'};transition:background 0.3s"></div>`;
+        }).join('')
+      ).join('<div style="width:4px"></div>');
+    }
   }
 
   // ── Progress UI ────────────────────────────────────────────────────────────
@@ -603,6 +631,7 @@ Never break character. Never use bullet points unless listing options. Just talk
       document.getElementById('backToSparkBar').style.visibility='visible';
       document.getElementById('userInput').placeholder='Reply to Chicha…';
       App.collapseSpark();
+      updateConceptHeader();
 
       const concept=spark.concept||spark.title;
       const theory=isTheory(concept);
@@ -656,6 +685,9 @@ STRICT: Only "${concept}" syntax. No other SQL concepts.`;
       });
       const bb=document.getElementById('backToSparkBar');
       if(bb) bb.style.visibility='hidden';
+      // Hide concept header in free chat mode
+      const ch=document.getElementById('conceptHeader');
+      if(ch) ch.style.display='none';
       document.getElementById('userInput').placeholder='Ask Chicha anything…';
       const msgs=document.getElementById('messages');
       if(msgs&&msgs.children.length===0){
@@ -756,6 +788,9 @@ STRICT: Only "${concept}" syntax. No other SQL concepts.`;
       document.getElementById('backToSparkBar').style.visibility='hidden';
       const cr=document.getElementById('chatReadyState');
       if(cr) cr.style.display='none';
+      // Hide concept header
+      const ch=document.getElementById('conceptHeader');
+      if(ch) ch.style.display='none';
       Chat.showSpark();
     },
   };
