@@ -141,13 +141,69 @@ const Chat = (() => {
   function checkComeback() {
     const s = State.get();
     if (!s.lastActiveDate) return;
-    const days = Math.floor((Date.now() - new Date(s.lastActiveDate)) / 86400000);
-    if (days >= 2) {
-      setTimeout(() => injectMonologue(
-        `You're back after ${days} day${days>1?'s':''}. No judgment. Quick 60-second recap before we continue — just to make sure the last session didn't evaporate. 🧠`,
+    const msAgo = Date.now() - new Date(s.lastActiveDate).getTime();
+    const hours = msAgo / 3600000;
+    const days  = Math.floor(msAgo / 86400000);
+    // Fire if away 4+ hours AND has mastered at least one concept
+    if (hours < 4) return;
+
+    // Find last mastered concept
+    const topic    = App.currentTopic();
+    const sections = CURRICULUM[topic] || [];
+    const all      = sections.flatMap(sc => sc.concepts);
+    const mastered = s.masteredConcepts || [];
+    const lastMastered = [...mastered].reverse().find(c => all.includes(c));
+    if (!lastMastered) return;
+
+    setTimeout(async () => {
+      const msgs = document.getElementById('messages');
+      if (!msgs) return;
+
+      // Show comeback message
+      injectMonologue(
+        `Welcome back${days >= 1 ? ` — ${days} day${days>1?'s':''} away` : hours >= 4 ? ` — ${Math.round(hours)} hours away` : ''}. Quick 30-second check before we continue. One question on what you learned last time.`,
         'info'
-      ), 1500);
-    }
+      );
+
+      // Ask a recap question via AI
+      const key = Auth.getKey();
+      if (!key) return;
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${key}` },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            max_tokens: 200,
+            messages: [{
+              role: 'system',
+              content: `You are Chicha. Ask ONE quick MCQ to check if the student remembers "${lastMastered}".
+Format EXACTLY:
+Quick check: [short question about ${lastMastered}]
+(a) [option]
+(b) [option]
+(c) [option]
+(d) [option]
+Keep it easy — this is just a warmup, not a test.`
+            }, {
+              role: 'user',
+              content: `Ask me a quick recap question about "${lastMastered}"`
+            }]
+          }),
+        });
+        const data  = await res.json();
+        const reply = data.choices[0]?.message?.content;
+        if (reply) {
+          const div = document.createElement('div');
+          div.className = 'msg msg-chicha';
+          div.innerHTML = `<div class="msg-av">✦</div><div><div class="msg-bubble">${escapeAndFormat(reply)}</div><div class="msg-meta">Chicha · recap</div></div>`;
+          msgs.appendChild(div);
+          msgs.scrollTop = msgs.scrollHeight;
+        }
+      } catch(e) {
+        // Silently fail — comeback detection is not critical
+      }
+    }, 1000);
   }
 
   // ── Persistence ───────────────────────────────────────────────────────────
