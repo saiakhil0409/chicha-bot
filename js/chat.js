@@ -282,40 +282,54 @@ FORBIDDEN: SQL syntax, relationships, keys, normalization, any SQL commands.`
 FORBIDDEN: anything outside "${concept}" scope.`}
 
 DIFFICULTY NOW: ${diff.level.toUpperCase()} (${_correctThisConcept}/${plan.total} toward mastery)
-${_correctThisConcept === plan.total - 1 ? `⚠ THIS IS THE FINAL QUESTION. If student answers correctly, say [CORRECT] + one short celebration sentence. DO NOT ask another question. The system will handle what comes next.` : ''}
+${_correctThisConcept >= plan.total - 1 ? `⚠ FINAL QUESTION COMING. After student answers correctly: say [CORRECT] + one short celebration sentence ONLY. Do NOT ask another question. Do NOT say "let's continue" or anything that implies more questions. Stop completely.` : ''}
 
 PRACTICE:
 When student says yes/sure/ready/ok:
 ${theory
   ? `ONE MCQ strictly about "${concept}" at ${diff.level} level.
-IMPORTANT: Place the correct answer randomly at (a), (b), (c) or (d) — do NOT always put it at (c).
-Use this position for the correct answer today: ${['a','b','c','d'][Math.floor(Math.random()*4)]}
-Format:
+IMPORTANT: Place the correct answer randomly — NOT always (c).
+Correct answer position: ${['a','b','c','d'][Math.floor(Math.random()*4)]}
+Format EXACTLY:
 Question: [question about "${concept}" ONLY]
 (a) [option]
 (b) [option]
 (c) [option]
 (d) [option]
-Do NOT say [CORRECT] yet.`
+Do NOT include [CORRECT] in this message.`
   : `ONE SQL task about "${concept}" at ${diff.level} level with Indian data.
-Do NOT say [CORRECT] yet.`}
+Do NOT include [CORRECT] in this message.`}
 
-WRONG on easy: say [WRONG] + re-explain the specific mistake + ask same level again.
-WRONG on other: say [WRONG] + diagnose WHY + ask similar.
+WRONG ANSWER RULES — MANDATORY, not optional:
+${diff.level === 'easy'
+  ? `Wrong on EASY (${_wrongAttempts >= 2 ? 'student has been wrong TWICE' : 'first wrong attempt'}):
+${_wrongAttempts >= 2
+  ? `Student has now been wrong TWICE on this. STOP asking the question.
+1. Say [WRONG]
+2. Explain the concept from scratch using a NEW analogy — different from the one used in teaching
+3. Then ask a SIMPLER version of the question or a different question at easy level`
+  : `1. Say [WRONG]
+2. In ONE sentence explain specifically what was wrong about their answer
+3. Give ONE hint pointing toward the right answer
+4. Ask the SAME question again`}`
+  : `Wrong on ${diff.level}:
+1. Say [WRONG]
+2. Diagnose specifically why their answer was wrong — don't just say "incorrect"
+3. Ask a similar question at the same difficulty`}
 
 SIGNALS:
 [AHA]     = student says ohh/I get it/that makes sense/clicked
-[CORRECT] = ONLY for actual correct answer — not yes/sure/ok
-[WRONG]   = wrong answer given
+[CORRECT] = ONLY when student gives a correct answer — NEVER in the same message as a question
+[WRONG]   = wrong answer — ALWAYS diagnose, never just re-ask
 
 STUCK ("idk/not sure/give up/:("):
 One empathy sentence → one diagnostic question → stop.
 
-MESSAGE TYPES — respond accordingly:
+MESSAGE TYPES:
 - Single letter (a/b/c/d) or SQL → evaluate as answer
-- "why this topic / what's next / can we skip" → explain curriculum path warmly, no MCQ
-- "what does X mean / explain again" → clarify that specific thing, stay on concept
-- Anything else off-topic → answer briefly as friend, then offer to return
+- "why this topic / what's next" → explain curriculum path, no MCQ
+- "what does X mean / explain again" → clarify, stay on concept
+- Off-topic curiosity → answer briefly as friend, offer to return
 
 FORMAT: backticks inline, triple backticks for SQL.`;
   }

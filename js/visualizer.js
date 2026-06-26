@@ -26,7 +26,7 @@ const Visualizer = (() => {
     const border = highlight === 'pass' ? 'rgba(52,211,153,0.25)' : highlight === 'fail' ? 'rgba(248,113,113,0.1)' : 'rgba(255,255,255,0.06)';
     return `<rect x="${x}" y="${y}" width="${w}" height="22" rx="0" fill="${bg}" stroke="${border}" stroke-width="0.5"/>
     ${cells.map((c,i) => {
-      const color = highlight==='pass'?'#34d399':highlight==='fail'?'#555':'inherit';
+      const color = highlight==='pass'?'#34d399':highlight==='fail'?'#555':'#c4c4e0';
       const deco  = highlight==='fail'?'text-decoration:line-through;':'';
       return `<text class="ts" x="${x+cw*i+8}" y="${y+15}" style="fill:${color};${deco}">${c}</text>`;
     }).join('')}`;
