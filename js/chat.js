@@ -144,30 +144,30 @@ const Chat = (() => {
     const msAgo = Date.now() - new Date(s.lastActiveDate).getTime();
     const hours = msAgo / 3600000;
     const days  = Math.floor(msAgo / 86400000);
-    // Fire if away 4+ hours AND has mastered at least one concept
     if (hours < 4) return;
 
-    // Find last mastered concept
+    // Find MOST RECENTLY mastered concept in curriculum order
     const topic    = App.currentTopic();
     const sections = CURRICULUM[topic] || [];
     const all      = sections.flatMap(sc => sc.concepts);
     const mastered = s.masteredConcepts || [];
-    const lastMastered = [...mastered].reverse().find(c => all.includes(c));
+    // Pick the last one in curriculum order that's been mastered
+    const masteredInOrder = all.filter(c => mastered.includes(c));
+    const lastMastered = masteredInOrder[masteredInOrder.length - 1];
     if (!lastMastered) return;
 
     setTimeout(async () => {
       const msgs = document.getElementById('messages');
       if (!msgs) return;
 
-      // Show comeback message
       injectMonologue(
-        `Welcome back${days >= 1 ? ` — ${days} day${days>1?'s':''} away` : hours >= 4 ? ` — ${Math.round(hours)} hours away` : ''}. Quick 30-second check before we continue. One question on what you learned last time.`,
+        `Welcome back${days >= 1 ? ` — ${days} day${days>1?'s':''} away` : ` — ${Math.round(hours)} hours away`}. Quick warmup before we continue — one question on "${lastMastered}".`,
         'info'
       );
 
-      // Ask a recap question via AI
       const key = Auth.getKey();
       if (!key) return;
+
       try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -177,31 +177,42 @@ const Chat = (() => {
             max_tokens: 200,
             messages: [{
               role: 'system',
-              content: `You are Chicha. Ask ONE quick MCQ to check if the student remembers "${lastMastered}".
-Format EXACTLY:
-Quick check: [short question about ${lastMastered}]
+              content: `You are Chicha. Ask ONE easy MCQ about "${lastMastered}" for a warmup recap.
+RULES:
+- Question must be ONLY about "${lastMastered}" — nothing else
+- Keep it easy — this is warmup not a test
+- Format EXACTLY like this, nothing before or after:
+Quick check: [question]
 (a) [option]
 (b) [option]
 (c) [option]
 (d) [option]
-Keep it easy — this is just a warmup, not a test.`
+- Do NOT say anything else. Just the question and options.`
             }, {
               role: 'user',
-              content: `Ask me a quick recap question about "${lastMastered}"`
+              content: `recap question on "${lastMastered}"`
             }]
           }),
         });
         const data  = await res.json();
         const reply = data.choices[0]?.message?.content;
-        if (reply) {
-          const div = document.createElement('div');
-          div.className = 'msg msg-chicha';
-          div.innerHTML = `<div class="msg-av">✦</div><div><div class="msg-bubble">${escapeAndFormat(reply)}</div><div class="msg-meta">Chicha · recap</div></div>`;
-          msgs.appendChild(div);
-          msgs.scrollTop = msgs.scrollHeight;
-        }
+        if (!reply) return;
+
+        // Add to message UI
+        const div = document.createElement('div');
+        div.className = 'msg msg-chicha';
+        div.innerHTML = `<div class="msg-av">✦</div><div><div class="msg-bubble">${escapeAndFormat(reply)}</div><div class="msg-meta">Chicha · recap</div></div>`;
+        msgs.appendChild(div);
+        msgs.scrollTop = msgs.scrollHeight;
+
+        // CRITICAL: Add recap Q&A to _history so send() can evaluate answer
+        _history.push({
+          role: 'assistant',
+          content: `[RECAP] ${reply}\n\nWhen student answers (a/b/c/d): evaluate their answer against "${lastMastered}". If correct say [CORRECT] + "Good, you still have it. Ready to continue?". If wrong say [WRONG] + briefly explain the right answer. Then stop — do NOT ask another question.`
+        });
+
       } catch(e) {
-        // Silently fail — comeback detection is not critical
+        // Silently fail
       }
     }, 1000);
   }
