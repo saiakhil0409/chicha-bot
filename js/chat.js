@@ -181,6 +181,7 @@ const Chat = (() => {
 RULES:
 - Question must be ONLY about "${lastMastered}" — nothing else
 - Keep it easy — this is warmup not a test
+- IMPORTANT: Place the correct answer randomly — NOT always at (c). Use position: ${['a','b','c','d'][Math.floor(Math.random()*4)]}
 - Format EXACTLY like this, nothing before or after:
 Quick check: [question]
 (a) [option]
@@ -285,9 +286,15 @@ DIFFICULTY NOW: ${diff.level.toUpperCase()} (${_correctThisConcept}/${plan.total
 PRACTICE:
 When student says yes/sure/ready/ok:
 ${theory
-  ? `ONE MCQ strictly about "${concept}" at ${diff.level} level:
-Question: [about "${concept}" ONLY]
-(a) ... (b) ... (c) ... (d) ...
+  ? `ONE MCQ strictly about "${concept}" at ${diff.level} level.
+IMPORTANT: Place the correct answer randomly at (a), (b), (c) or (d) — do NOT always put it at (c).
+Use this position for the correct answer today: ${['a','b','c','d'][Math.floor(Math.random()*4)]}
+Format:
+Question: [question about "${concept}" ONLY]
+(a) [option]
+(b) [option]
+(c) [option]
+(d) [option]
 Do NOT say [CORRECT] yet.`
   : `ONE SQL task about "${concept}" at ${diff.level} level with Indian data.
 Do NOT say [CORRECT] yet.`}
