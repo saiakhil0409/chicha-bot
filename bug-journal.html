@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chicha Bug Journal</title>
+<style>
+  :root {
+    --bg: #0a0a14;
+    --surface: #0d0d1c;
+    --surface2: #111128;
+    --border: #1a1a2e;
+    --violet: #8b5cf6;
+    --violet-lo: rgba(139,92,246,0.1);
+    --green: #34d399;
+    --amber: #f59e0b;
+    --red: #f87171;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, rgba(139,92,246,0.15), rgba(13,13,28,0.95));
+    border-bottom: 1px solid var(--border);
+    padding: 40px 48px 32px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+
+  .logo {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+
+  .header h1 {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .header h1 span { color: var(--violet); }
+
+  .header-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-left: 60px;
+  }
+
+  .header-meta {
+    display: flex;
+    gap: 24px;
+    margin-left: 60px;
+    margin-top: 12px;
+  }
+
+  .meta-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  /* ── Filters ── */
+  .filters {
+    padding: 16px 48px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .filter-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover { border-color: var(--violet); color: var(--violet); }
+  .filter-btn.active { background: var(--violet-lo); border-color: var(--violet); color: var(--violet); }
+
+  /* ── Stats bar ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stat {
+    background: var(--surface);
+    padding: 16px 24px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-size: 28px;
+    font-weight: 800;
+    font-family: var(--mono);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ── Content ── */
+  .content {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 48px 80px;
+  }
+
+  /* ── Bug card ── */
+  .bug-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .bug-card:hover { border-color: rgba(139,92,246,0.3); }
+
+  .bug-card.status-fixed { border-left: 3px solid var(--green); }
+  .bug-card.status-partial { border-left: 3px solid var(--amber); }
+  .bug-card.status-open { border-left: 3px solid var(--red); }
+
+  .bug-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 18px 20px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .bug-id {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .bug-title-wrap { flex: 1; }
+
+  .bug-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .bug-summary {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .status-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .status-badge.fixed    { background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .status-badge.partial  { background: rgba(245,158,11,0.12);  color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+  .status-badge.open     { background: rgba(248,113,113,0.12); color: var(--red);   border: 1px solid rgba(248,113,113,0.3); }
+
+  .category-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    background: var(--violet-lo);
+    color: var(--violet);
+    border: 1px solid rgba(139,92,246,0.25);
+    white-space: nowrap;
+  }
+
+  .chevron {
+    font-size: 12px;
+    color: var(--muted);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  .bug-card.open .chevron { transform: rotate(180deg); }
+
+  /* ── Bug body ── */
+  .bug-body {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 20px;
+  }
+
+  .bug-card.open .bug-body { display: block; }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    margin-top: 20px;
+  }
+
+  .section-label:first-child { margin-top: 0; }
+
+  .prose {
+    font-size: 13px;
+    color: #b0b0cc;
+    line-height: 1.7;
+  }
+
+  .code-diff {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 8px 0;
+  }
+
+  @media (max-width: 700px) {
+    .code-diff { grid-template-columns: 1fr; }
+  }
+
+  .code-block {
+    background: #060612;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .code-block-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .code-block-label.before { color: var(--red); background: rgba(248,113,113,0.06); }
+  .code-block-label.after  { color: var(--green); background: rgba(52,211,153,0.06); }
+  .code-block-label.note   { color: var(--amber); background: rgba(245,158,11,0.06); }
+
+  .code-block pre {
+    padding: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #9999bb;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .code-block pre .del { color: var(--red); background: rgba(248,113,113,0.1); display: block; }
+  .code-block pre .add { color: var(--green); background: rgba(52,211,153,0.08); display: block; }
+
+  .outcome-box {
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 8px 0;
+  }
+
+  .outcome-box.success { background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.2); color: #34d399; }
+  .outcome-box.warning { background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.2); color: #f59e0b; }
+  .outcome-box.info    { background: var(--violet-lo); border: 1px solid rgba(139,92,246,0.2); color: #a78bfa; }
+
+  .lesson-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-top: 8px;
+  }
+
+  .lesson-box strong { color: var(--text); }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+
+  /* ── Timeline ── */
+  .timeline-dot {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    padding: 32px;
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo">✦</div>
+    <div>
+      <h1>Chicha <span>Bug Journal</span></h1>
+    </div>
+  </div>
+  <div class="header-sub">Complete bug history for the Chicha SQL Learning Bot — saiakhil0409.github.io/chicha-bot-v3</div>
+  <div class="header-meta">
+    <span class="meta-pill">Project: Chicha v2</span>
+    <span class="meta-pill">Stack: Vanilla JS · Groq API · GitHub Pages</span>
+    <span class="meta-pill">Last updated: June 26, 2026</span>
+  </div>
+</div>
+
+<div class="filters">
+  <button class="filter-btn active" onclick="filterBugs('all')">All Bugs</button>
+  <button class="filter-btn" onclick="filterBugs('fixed')">✅ Fixed</button>
+  <button class="filter-btn" onclick="filterBugs('partial')">⚠️ Partial</button>
+  <button class="filter-btn" onclick="filterBugs('open')">🔴 Open</button>
+  <button class="filter-btn" onclick="filterBugs('auth')">Auth</button>
+  <button class="filter-btn" onclick="filterBugs('ai')">AI / Prompt</button>
+  <button class="filter-btn" onclick="filterBugs('ui')">UI / Layout</button>
+  <button class="filter-btn" onclick="filterBugs('flow')">Learning Flow</button>
+  <button class="filter-btn" onclick="filterBugs('cache')">Cache</button>
+</div>
+
+<div class="stats">
+  <div class="stat">
+    <div class="stat-num" style="color:var(--text)" id="stat-total">15</div>
+    <div class="stat-label">Total Bugs</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" style="color:var(--green)" id="stat-fixed">9</div>
+    <div class="stat-label">Fixed</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" style="color:var(--amber)" id="stat-partial">5</div>
+    <div class="stat-label">Partial Fix</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" style="color:var(--red)" id="stat-open">1</div>
+    <div class="stat-label">Open</div>
+  </div>
+</div>
+
+<div class="content" id="bugList">
+
+  <!-- BUG 01 -->
+  <div class="bug-card status-fixed" data-status="fixed" data-category="auth" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-01</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          "Save & Wake Chicha" button not working
+          <span class="status-badge fixed">✅ Fixed</span>
+          <span class="category-badge">Auth</span>
+        </div>
+        <div class="bug-summary">Clicking the setup button did nothing. No error shown. App never opened.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">What Happened</div>
+      <div class="prose">The login card expanded when "Set up your Groq API key" was clicked. Fields were filled with API key and password. Clicking "Save & Wake Chicha" produced no response — no error, no app opening, nothing. Silent failure.</div>
+
+      <div class="section-label">Root Cause</div>
+      <div class="prose">Two separate causes found on investigation:<br><br>
+      <strong>Cause 1 — Overflow hidden:</strong> <code>body</code> had <code>overflow:hidden</code> globally. When the setup form expanded the login card taller than the viewport, the button was physically below the visible area — present in the DOM but invisible and unclickable.<br><br>
+      <strong>Cause 2 — App not defined:</strong> <code>auth.js</code> loads at line 367, <code>app.js</code> loads at line 377. <code>doSetup()</code> called <code>App.launch()</code> — but at click time, App was technically defined (all scripts load before any interaction). However an intermediate version used <code>window.location.reload()</code> which cleared sessionStorage, breaking the auth check on reload.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-diff">
+        <div class="code-block">
+          <div class="code-block-label before">✗ Before — style.css</div>
+          <pre>html, body {
+  height: 100%;
+  overflow: hidden; /* global — broke login */
+}</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-label after">✓ After — style.css</div>
+          <pre>html, body { height: 100%; }
+body { overflow-y: auto; }
+body.app-open { overflow: hidden; }</pre>
+        </div>
+      </div>
+      <div class="code-diff">
+        <div class="code-block">
+          <div class="code-block-label before">✗ Before — auth.js</div>
+          <pre>doSetup() {
+  // ...encrypt key...
+  window.location.reload(); // cleared sessionStorage!
+}</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-label after">✓ After — auth.js</div>
+          <pre>doSetup() {
+  // ...encrypt key...
+  sessionStorage.setItem('chicha_pw', pw);
+  App.launch(); // direct call, no reload
+}</pre>
+        </div>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box success">✅ Fully fixed. Setup form now scrollable. App launches directly without page reload.</div>
+
+      <div class="section-label">Lesson Learned</div>
+      <div class="lesson-box"><strong>Never apply overflow:hidden globally.</strong> Login forms and modals need to scroll. Apply overflow:hidden only to the main app container via a body class (<code>body.app-open</code>), not to body universally. Always test forms at minimum viewport height.</div>
+    </div>
+  </div>
+
+  <!-- BUG 02 -->
+  <div class="bug-card status-fixed" data-status="fixed" data-category="auth" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-02</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          Login password not working — "Wrong password" after correct entry
+          <span class="status-badge fixed">✅ Fixed</span>
+          <span class="category-badge">Auth</span>
+        </div>
+        <div class="bug-summary">User entered correct password, clicked "Open Chicha" — got "Wrong password" error repeatedly.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose"><code>app.js</code> had a syntax error at line 109 — the <code>toggleMenu() {</code> function declaration was accidentally deleted by a previous <code>str_replace</code> edit. JavaScript crashed when loading <code>app.js</code>, so <code>App</code> was never defined. Every button that called <code>App.anything()</code> silently failed. Additionally, a previous fix used <code>window.location.reload()</code> after login which cleared sessionStorage — the auth check then failed on the freshly loaded page.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-diff">
+        <div class="code-block">
+          <div class="code-block-label before">✗ Before — app.js line 109</div>
+          <pre>window.location.reload();
+    },
+      _menuOpen = !_menuOpen; // ← orphaned code, syntax error</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-label after">✓ After — app.js</div>
+          <pre>window.location.reload();
+    },
+
+    toggleMenu() {    // ← restored function declaration
+      _menuOpen = !_menuOpen;</pre>
+        </div>
+      </div>
+
+      <div class="section-label">Detection Method</div>
+      <div class="outcome-box info">💡 Found using <code>node --check app.js</code> — syntax validator. This catches syntax errors before deployment. Now run on every file before every upload.</div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box success">✅ Fixed. Login works. <code>node --check</code> added as mandatory pre-deploy step.</div>
+
+      <div class="section-label">Lesson Learned</div>
+      <div class="lesson-box"><strong>str_replace is dangerous near function boundaries.</strong> When replacing code that contains a function declaration, always verify the replacement includes the full function signature. Run <code>node --check</code> on every JS file before sharing. A syntax error in one file silently breaks everything that depends on it.</div>
+    </div>
+  </div>
+
+  <!-- BUG 03 -->
+  <div class="bug-card status-fixed" data-status="fixed" data-category="cache" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-03</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          Browser serving old JS despite new files uploaded
+          <span class="status-badge fixed">✅ Fixed</span>
+          <span class="category-badge">Cache</span>
+        </div>
+        <div class="bug-summary">Fixed bugs were not visible after upload. Browser kept running old broken code. Same errors appearing repeatedly.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose">GitHub Pages CDN caches static assets aggressively. Scripts loaded as <code>chat.js</code> were served from cache regardless of file changes on GitHub. The browser never fetched the updated files. This caused fixes to appear not working when they had actually been applied correctly.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-diff">
+        <div class="code-block">
+          <div class="code-block-label before">✗ Before — index.html</div>
+          <pre>&lt;script src="js/chat.js"&gt;&lt;/script&gt;
+&lt;script src="js/app.js"&gt;&lt;/script&gt;</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-label after">✓ After — index.html (v=3)</div>
+          <pre>&lt;script src="js/chat.js?v=3"&gt;&lt;/script&gt;
+&lt;script src="js/app.js?v=3"&gt;&lt;/script&gt;</pre>
+        </div>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box success">✅ Fixed. Cache-bust query string forces browser to fetch fresh files. Currently on v=3.</div>
+
+      <div class="section-label">Lesson Learned</div>
+      <div class="lesson-box"><strong>Always increment cache-bust version when deploying fixes.</strong> Currently v=3. Next major update should go to v=4. When debugging, always test in Incognito window first — it has zero cache and shows true deployed state. If it works in Incognito but not normal browser, it's always a cache issue.</div>
+    </div>
+  </div>
+
+  <!-- BUG 04 -->
+  <div class="bug-card status-fixed" data-status="fixed" data-category="flow" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-04</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          "Start Learning" teaching wrong concept — showed CREATE TABLE for "What is a Database"
+          <span class="status-badge fixed">✅ Fixed</span>
+          <span class="category-badge">Learning Flow</span>
+        </div>
+        <div class="bug-summary">Theory concept showed SQL syntax it shouldn't know about. Step 2 showed CREATE TABLE syntax when teaching "What is a Database".</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose">The teaching prompt had no separation between theory concepts (no SQL) and SQL command concepts. The AI associated "What is a Database" with databases → tables → CREATE TABLE and added syntax freely. Additionally, <code>getSparkForTopic()</code> was picking a random concept regardless of mastery order, so a zero-knowledge beginner could land on an advanced concept like "Window functions" as their first lesson.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-block" style="margin:8px 0">
+        <div class="code-block-label after">✓ Fix 1 — Two separate teaching prompts in chat.js</div>
+        <pre>const THEORY_CONCEPTS = ['What is a Database', 'What is a Table', 'Data types', ...];
+
+const msg = isTheory(concept)
+  ? `Teach ONLY: "${concept}" — THEORY, no SQL code.
+     Step 1 — Analogy. Step 2 — Why it matters. Step 3 — Real world example.
+     STRICT: No SQL. No code.`
+  : `Teach ONLY: "${concept}" — SQL command.
+     Step 1 — Analogy. Step 2 — Syntax. Step 3 — Example.`;</pre>
+      </div>
+      <div class="code-block" style="margin:8px 0">
+        <div class="code-block-label after">✓ Fix 2 — Curriculum order in getSparkForTopic()</div>
+        <pre>function getSparkForTopic(topic, surpriseMode = false) {
+  const unmastered = allConcepts.filter(c => !mastered.includes(c));
+  // DEFAULT: always pick FIRST unmastered in curriculum order
+  // SURPRISE: random from unmastered
+  const concept = surpriseMode
+    ? pool[Math.floor(Math.random() * pool.length)]
+    : pool[0]; // ← always first unmastered
+}</pre>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box success">✅ Fixed. Theory concepts show no SQL. Beginners always start at "What is a Database" → "What is a Table" → in curriculum order.</div>
+
+      <div class="section-label">Lesson Learned</div>
+      <div class="lesson-box"><strong>LLMs don't respect implicit boundaries — make them explicit.</strong> "What is a Database" teaching SQL is natural LLM behaviour — it associates the concepts. You need a hard explicit instruction: "THEORY — no SQL code" as a separate prompt, not a rule inside a shared prompt.</div>
+    </div>
+  </div>
+
+  <!-- BUG 05 -->
+  <div class="bug-card status-fixed" data-status="fixed" data-category="flow" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-05</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          "Yes" triggering mastery — concept mastered after single "yes" answer
+          <span class="status-badge fixed">✅ Fixed</span>
+          <span class="category-badge">Learning Flow</span>
+        </div>
+        <div class="bug-summary">Typing "yes" after Chicha's teaching caused [CORRECT] to fire and mastery card to appear immediately. No practice question asked.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose">The system prompt said "If the student gives a correct answer → say [CORRECT]". The AI interpreted "yes" (as in "yes, I'm ready") as a correct answer to an implicit question. The [CORRECT] signal fired, processSignals() incremented the mastery counter, and with threshold at 1, mastery triggered immediately.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-block" style="margin:8px 0">
+        <div class="code-block-label after">✓ Fix — Explicit signal rules in system prompt</div>
+        <pre>[CORRECT] = ONLY when student gives actual correct answer (SQL/MCQ)
+          NOT for "yes/sure/ok/ready"
+
+When student says yes/sure/ready/ok:
+→ Ask ONE practice question. Do NOT say [CORRECT].</pre>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box success">✅ Fixed. "Yes" now triggers a practice question. [CORRECT] only fires on actual answers.</div>
+    </div>
+  </div>
+
+  <!-- BUG 06 -->
+  <div class="bug-card status-fixed" data-status="fixed" data-category="ai" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-06</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          MCQ correct answer always option (c)
+          <span class="status-badge fixed">✅ Fixed</span>
+          <span class="category-badge">AI / Prompt</span>
+        </div>
+        <div class="bug-summary">Regardless of the question, the correct MCQ answer was almost always option (c). A student could guess (c) every time and get most answers right.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose">llama-3.3-70b-versatile (the Groq model used) has a positional bias — when generating MCQs without position guidance, it defaults to placing the correct answer at option (c) approximately 60-70% of the time. This is a known pattern in instruction-tuned LLMs.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-block" style="margin:8px 0">
+        <div class="code-block-label after">✓ Fix — Random position instruction in prompt</div>
+        <pre>const randomPos = ['a','b','c','d'][Math.floor(Math.random()*4)];
+
+// In system prompt:
+`MCQ about "${concept}" at ${diff.level} difficulty.
+Correct answer goes at position: ${randomPos}
+Write ONLY:
+Question: [question]
+(a) [option]  (b) [option]
+(c) [option]  (d) [option]`</pre>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box warning">⚠️ Mostly fixed. Position instruction reduces (c) bias significantly. Not 100% reliable — model occasionally ignores the position instruction. Full fix requires structured JSON output (Phase 2 planned).</div>
+
+      <div class="section-label">Lesson Learned</div>
+      <div class="lesson-box"><strong>LLMs have statistical biases in generation.</strong> The real fix is structured output: generate MCQ as JSON <code>{"question": "...", "options": [{"text": "...", "correct": true}]}</code> and shuffle client-side. Then correct answer position is 100% random, guaranteed by code not by prompt instruction.</div>
+    </div>
+  </div>
+
+  <!-- BUG 07 -->
+  <div class="bug-card status-partial" data-status="partial" data-category="ai" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-07</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          Concept drift — questions about topics not yet taught
+          <span class="status-badge partial">⚠️ Partial Fix</span>
+          <span class="category-badge">AI / Prompt</span>
+        </div>
+        <div class="bug-summary">Teaching "What is a Table" → Chicha asked about primary keys, One-to-Many relationships, normalization. All are concepts 20+ positions ahead in the curriculum.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose">LLMs naturally associate related concepts. "What is a Table" → the model connects tables to primary keys, foreign keys, relationships — things it knows are related. No prompt instruction fully prevents this because the model's training makes these associations deeply embedded.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-block" style="margin:8px 0">
+        <div class="code-block-label after">✓ Fix — Curriculum position context in system prompt</div>
+        <pre>CURRICULUM POSITION:
+Taught so far: What is a Database
+NOW teaching: "What is a Table" (2/49)
+Not yet taught: Data types, CREATE DATABASE, CREATE TABLE...
+
+CONCEPT BOUNDARY — STRICT:
+Only ask about "${concept}".
+Never reference items from "not yet taught".
+FORBIDDEN: SQL syntax, relationships, keys, normalization.</pre>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box warning">⚠️ Reduced but not eliminated. Explicit taught/not-taught context helps significantly. The model still occasionally drifts — especially on theory concepts where related SQL concepts are strongly associated in training. Full fix requires structured output with topic validation.</div>
+
+      <div class="section-label">Future Fix</div>
+      <div class="lesson-box"><strong>Structural solution (Phase 2):</strong> Chicha returns JSON with a <code>topic_used</code> field. Client validates it matches the current concept before displaying. If it drifts, client rejects and retries. This makes concept boundary enforcement reliable regardless of model behaviour.</div>
+    </div>
+  </div>
+
+  <!-- BUG 08 -->
+  <div class="bug-card status-partial" data-status="partial" data-category="ai" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-08</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          [CORRECT] fires after 1 question instead of required threshold
+          <span class="status-badge partial">⚠️ Partial Fix</span>
+          <span class="category-badge">AI / Prompt</span>
+        </div>
+        <div class="bug-summary">Concept mastered after answering 1 question correctly despite threshold being set to 5 for theory concepts.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose">Three overlapping causes:<br><br>
+      <strong>Cause 1:</strong> Chicha included [CORRECT] in her question-asking message (not just answer-evaluation). processSignals() detected it and incremented the counter before any answer was given.<br><br>
+      <strong>Cause 2:</strong> Chicha's reply after [CORRECT] said "Ready for the next topic: What is a Table" — triggering the app to advance before the mastery threshold was reached.<br><br>
+      <strong>Cause 3:</strong> Browser cache — user was seeing old code with a lower threshold.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-block" style="margin:8px 0">
+        <div class="code-block-label after">✓ Fix 1 — Two-mode prompt (asking vs evaluating)</div>
+        <pre>RULES:
+1. When student says yes/ready → ask ONE question. Nothing else.
+2. When student sends answer → evaluate it.
+3. NEVER decide to move to next topic yourself.
+4. After [CORRECT], just celebrate briefly. Stop.</pre>
+      </div>
+      <div class="code-block" style="margin:8px 0">
+        <div class="code-block-label after">✓ Fix 2 — Client-side reply sanitisation</div>
+        <pre>function sanitiseReply(reply) {
+  if (!reply.includes('[CORRECT]')) return reply;
+  // Strip sentences mentioning next topic/step/concept
+  return sentences.filter(s => !s.includes('next topic')
+    && !s.includes('next step') && !s.includes('ready to proceed')
+    && !s.includes('move on') ...).join(' ');
+}</pre>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box warning">⚠️ Mostly fixed. Two-mode prompt significantly reduces premature [CORRECT]. sanitiseReply() catches known "move on" phrases. Model occasionally uses unknown phrasings that bypass the filter. Full fix requires structured JSON output.</div>
+
+      <div class="section-label">Future Fix</div>
+      <div class="lesson-box"><strong>Root cause is free-text signal parsing.</strong> When we scan reply text for "[CORRECT]", any accidental inclusion triggers mastery. The fix: Chicha returns <code>{"signal": "CORRECT", "message": "..."}</code>. Signal comes from a dedicated JSON field, not from scanning free text. This is the single highest-impact fix planned for Phase 2.</div>
+    </div>
+  </div>
+
+  <!-- BUG 09 -->
+  <div class="bug-card status-fixed" data-status="fixed" data-category="ai" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-09</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          Prompt instructions leaking into chat — "Do NOT include in this message" showing to user
+          <span class="status-badge fixed">✅ Fixed</span>
+          <span class="category-badge">AI / Prompt</span>
+        </div>
+        <div class="bug-summary">User saw raw system prompt text in the chat bubble: "Do NOT include in this message." and "⛔" symbols appearing in Chicha's responses.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose">System prompt instructions were embedded adjacent to the output format template. When the AI fills in the format template, it includes surrounding text as context. Instructions like "Do NOT include [CORRECT] or [WRONG] when asking. Just ask." placed directly after the format block were echoed as part of the output.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-diff">
+        <div class="code-block">
+          <div class="code-block-label before">✗ Before — adjacent to format</div>
+          <pre>Format:
+Question: [question]
+(a) [option] (b) [option]
+(c) [option] (d) [option]
+⛔ Do NOT include [CORRECT]
+or [WRONG] when asking.</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-label after">✓ After — separated sections</div>
+          <pre>QUESTION FORMAT (when asking):
+Question: [question]
+(a) [option] (b) [option]
+(c) [option] (d) [option]
+
+EVALUATION FORMAT (when answering):
+Correct → write: [CORRECT]
+Wrong → write: [WRONG]</pre>
+        </div>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box success">✅ Fixed. Separating instruction sections from output format templates prevents leakage.</div>
+
+      <div class="section-label">Lesson Learned</div>
+      <div class="lesson-box"><strong>Never put "do not say X" immediately adjacent to a format template.</strong> The model reads them together. Keep instructions in a separate section with a clear header, far from the output format. Meta-instructions about what NOT to include are especially prone to being echoed.</div>
+    </div>
+  </div>
+
+  <!-- BUG 10 -->
+  <div class="bug-card status-fixed" data-status="fixed" data-category="ui" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-10</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          SVG table text invisible — dark text on dark background
+          <span class="status-badge fixed">✅ Fixed</span>
+          <span class="category-badge">UI / Layout</span>
+        </div>
+        <div class="bug-summary">The "What is a Table" visual diagram showed a table with empty-looking rows. Text was present but invisible.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose">The <code>tableRow()</code> helper function in visualizer.js used <code>fill:inherit</code> for default (non-highlighted) row text. SVG does not inherit color from CSS the way HTML does — it falls back to black (#000000) which is invisible on the dark (#0a0a18) background.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-diff">
+        <div class="code-block">
+          <div class="code-block-label before">✗ Before — tableRow()</div>
+          <pre>const color = highlight==='pass'
+  ? '#34d399'
+  : highlight==='fail'
+  ? '#555'
+  : 'inherit'; // ← SVG ignores inherit → black</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-label after">✓ After — tableRow()</div>
+          <pre>const color = highlight==='pass'
+  ? '#34d399'
+  : highlight==='fail'
+  ? '#555'
+  : '#c4c4e0'; // ← explicit light color</pre>
+        </div>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box success">✅ Fixed. All SVG table rows now use explicit hex color.</div>
+
+      <div class="section-label">Lesson Learned</div>
+      <div class="lesson-box"><strong>SVG ignores CSS color inheritance.</strong> Never use <code>fill:inherit</code> or <code>color:inherit</code> in SVG text elements. Always specify explicit hex values. SVG renders in its own context — CSS cascade does not apply the same way as HTML.</div>
+    </div>
+  </div>
+
+  <!-- BUG 11 -->
+  <div class="bug-card status-fixed" data-status="fixed" data-category="flow" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-11</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          Voice module crash — "Voice is not defined" on app launch
+          <span class="status-badge fixed">✅ Fixed</span>
+          <span class="category-badge">Learning Flow</span>
+        </div>
+        <div class="bug-summary">After removing voice.js from the project, the app crashed on launch with "Voice is not defined". Every button stopped working silently.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose">Voice mode was removed (script tag and mic button deleted from index.html) but <code>Voice.init()</code> call was left in <code>App.launch()</code> in app.js. When <code>App.launch()</code> ran, it hit <code>Voice.init()</code>, threw "Voice is not defined", and crashed the entire launch sequence. App appeared to work (no obvious error shown to user) but nothing functioned.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-diff">
+        <div class="code-block">
+          <div class="code-block-label before">✗ Before — app.js</div>
+          <pre>launch() {
+  Mood.init();
+  Chat.init();
+  Voice.init(); // ← Voice removed but call left
+  Roadmap.init();
+}</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-label after">✓ After — app.js</div>
+          <pre>launch() {
+  Mood.init();
+  Chat.init();
+  // Voice.init() removed
+  Roadmap.init();
+}</pre>
+        </div>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box success">✅ Fixed. Grep for all <code>Voice.</code> references confirmed complete removal.</div>
+
+      <div class="section-label">Lesson Learned</div>
+      <div class="lesson-box"><strong>When removing a module, grep every file for references.</strong> Removing a script tag is not enough. Run: <code>grep -rn "Voice\." js/ index.html</code> before confirming removal is complete. This applies to any module removal — the call sites outlive the module unless explicitly hunted down.</div>
+    </div>
+  </div>
+
+  <!-- BUG 12 -->
+  <div class="bug-card status-partial" data-status="partial" data-category="ai" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-12</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          Wrong answer handling — Chicha re-asks same question without re-explaining
+          <span class="status-badge partial">⚠️ Partial Fix</span>
+          <span class="category-badge">AI / Prompt</span>
+        </div>
+        <div class="bug-summary">When a student answers wrong twice on Easy difficulty, Chicha should re-explain with a new analogy. Instead she kept asking the exact same question repeatedly with no additional explanation.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose">The system prompt marked wrong-answer handling as "mandatory" but the LLM treats all instructions as soft suggestions. When the model's training default (re-ask the question) conflicts with the prompt instruction (re-explain first), training wins. The model finds re-asking simpler and more natural than re-teaching.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-block" style="margin:8px 0">
+        <div class="code-block-label after">✓ Fix — _wrongAttempts counter tied to prompt instruction</div>
+        <pre>// _wrongAttempts tracked in code
+Wrong answer → write exactly: [WRONG]
+${diff.level === 'easy' && _wrongAttempts >= 2
+  ? `Re-teach "${concept}" with a completely different analogy.
+     Then ask a different easier question.`
+  : `Explain what was wrong. Give a hint. Ask same question again.`}</pre>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box warning">⚠️ Better but still LLM-dependent. The counter-based instruction is more specific than a general rule. Model follows it more consistently but not 100%.</div>
+
+      <div class="section-label">Future Fix</div>
+      <div class="lesson-box"><strong>Behavioural instructions to LLMs are unreliable.</strong> The structural fix is to handle this client-side: if wrong twice on Easy, send a separate system message override: "You must re-explain before asking again. This is not optional." Or better — trigger a specific re-teach API call that doesn't go through the normal lesson prompt at all.</div>
+    </div>
+  </div>
+
+  <!-- BUG 13 -->
+  <div class="bug-card status-fixed" data-status="fixed" data-category="flow" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-13</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          Mastery card shows before final question is answered
+          <span class="status-badge fixed">✅ Fixed</span>
+          <span class="category-badge">Learning Flow</span>
+        </div>
+        <div class="bug-summary">On question 4 of 5, Chicha's reply evaluating q4 correctly AND asking q5 both contained [CORRECT]. Mastery card appeared while q5 was still being asked.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose">A <code>_correctThisConcept === plan.total - 1</code> check in the system prompt told Chicha "next correct = final." Chicha interpreted this as permission to include [CORRECT] in the same message that asked the final question — awarding mastery before the student even answered.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-diff">
+        <div class="code-block">
+          <div class="code-block-label before">✗ Before</div>
+          <pre>// In system prompt:
+${_correctThisConcept === plan.total - 1
+  ? `⚠ NEXT CORRECT = FINAL...`  // fired too early
+  : ''}</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-label after">✓ After</div>
+          <pre>// Removed the early warning entirely.
+// processSignals() handles mastery:
+if (_correctThisConcept >= plan.total) {
+  // Only fires AFTER answer evaluated
+  showSessionSummary(plan);
+}</pre>
+        </div>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box success">✅ Fixed. Mastery card only appears after processSignals() confirms threshold reached on an actual answer.</div>
+    </div>
+  </div>
+
+  <!-- BUG 14 -->
+  <div class="bug-card status-fixed" data-status="fixed" data-category="flow" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-14</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          Advancing to next concept — AI taught new concept without clearing history
+          <span class="status-badge fixed">✅ Fixed</span>
+          <span class="category-badge">Learning Flow</span>
+        </div>
+        <div class="bug-summary">After mastering "What is a Database" and clicking Continue, Chicha skipped teaching "What is a Table" and jumped straight to practice questions. Context from previous concept bled into the new one.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose"><code>advanceToNext()</code> didn't clear <code>_history</code>. When the new concept's teaching prompt was sent, the AI saw 5 Q&A pairs about "What is a Database" in context. It assumed practice was still in progress and skipped teaching entirely, going straight to asking another question.</div>
+
+      <div class="section-label">Changes Made</div>
+      <div class="code-diff">
+        <div class="code-block">
+          <div class="code-block-label before">✗ Before — advanceToNext()</div>
+          <pre>advanceToNext() {
+  _currentSpark = getSparkForTopic(topic);
+  _masteredThisSession = false;
+  Chat.startSpark(); // history still had 5 Q&As
+}</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-label after">✓ After — advanceToNext()</div>
+          <pre>advanceToNext() {
+  _history = []; // ← clear history first
+  _currentSpark = getSparkForTopic(topic);
+  _masteredThisSession = false;
+  _correctThisConcept = 0;
+  Chat.startSpark(); // starts fresh
+}</pre>
+        </div>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box success">✅ Fixed. History cleared on every concept advance. AI starts each concept with clean context.</div>
+
+      <div class="section-label">Lesson Learned</div>
+      <div class="lesson-box"><strong>LLM context is cumulative.</strong> Previous conversation history shapes every subsequent response. When moving to a new concept, the old context is actively harmful. Always clear <code>_history</code> at concept boundaries. Think of it as giving the AI a fresh sheet of paper for each new topic.</div>
+    </div>
+  </div>
+
+  <!-- BUG 15 -->
+  <div class="bug-card status-open" data-status="open" data-category="ai" onclick="toggleCard(this)">
+    <div class="bug-header">
+      <span class="bug-id">BUG-15</span>
+      <div class="bug-title-wrap">
+        <div class="bug-title">
+          Free-text signal parsing — structural fragility of [CORRECT]/[WRONG] detection
+          <span class="status-badge open">🔴 Open</span>
+          <span class="category-badge">AI / Prompt</span>
+        </div>
+        <div class="bug-summary">The entire mastery system depends on scanning Chicha's free-text reply for "[CORRECT]" and "[WRONG]" tokens. This approach is inherently unreliable — the model sometimes includes them when it shouldn't, omits them when it should, or writes "CORRECT" without brackets.</div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">Root Cause</div>
+      <div class="prose">Fundamental architectural decision: using embedded tokens in free text as signals. Every bug related to premature mastery, missing face animations, concept skipping, and wrong answer handling traces back to this. The model is being asked to remember to include specific strings in specific positions in a free-form response — which conflicts with how language models generate text.</div>
+
+      <div class="section-label">Current Workarounds Applied</div>
+      <div class="code-block" style="margin:8px 0">
+        <div class="code-block-label note">Current approach — fragile</div>
+        <pre>// Scan reply text for signal tokens
+if (reply.includes('[CORRECT]')) { ... }
+if (reply.includes('[WRONG]'))   { ... }
+if (reply.includes('[AHA]'))     { ... }
+
+// sanitiseReply strips unwanted "next topic" text
+// Random position instruction fights (c) bias
+// Two-mode prompt separates asking from evaluating</pre>
+      </div>
+
+      <div class="section-label">Proposed Fix (Phase 2)</div>
+      <div class="code-block" style="margin:8px 0">
+        <div class="code-block-label after">✓ Structured JSON output — reliable</div>
+        <pre>// System prompt asks for JSON response:
+{
+  "signal": "CORRECT" | "WRONG" | "AHA" | null,
+  "message": "Chicha's response text here",
+  "question": {  // only present when asking
+    "text": "What is a primary key?",
+    "options": [
+      {"label":"a","text":"...","correct":false},
+      {"label":"b","text":"...","correct":true},
+      {"label":"c","text":"...","correct":false},
+      {"label":"d","text":"...","correct":false}
+    ]
+  }
+}
+
+// Client reads signal from dedicated field:
+const { signal, message, question } = JSON.parse(reply);
+// No scanning. No ambiguity. 100% reliable.</pre>
+      </div>
+
+      <div class="section-label">Outcome</div>
+      <div class="outcome-box warning">⚠️ Open — mitigated with workarounds but not fully solved. Structured JSON output is the definitive fix, planned for Phase 2.</div>
+
+      <div class="section-label">Impact of This Bug</div>
+      <div class="lesson-box"><strong>This single bug is the root cause of BUG-05, BUG-06, BUG-08, BUG-09, BUG-12, BUG-13.</strong> Six separate bugs all trace back to the same architectural decision. Fixing this one bug in Phase 2 will eliminate or significantly reduce all of them simultaneously. It is the highest-priority item in the entire backlog.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Chicha Bug Journal · saiakhil0409.github.io/chicha-bot-v3 · Built by Neo + KIPP · Last updated June 26, 2026
+</div>
+
+<script>
+  function toggleCard(card) {
+    // Don't close if clicking inside body
+    card.classList.toggle('open');
+  }
+
+  function filterBugs(filter) {
+    // Update active button
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+
+    const cards = document.querySelectorAll('.bug-card');
+    cards.forEach(card => {
+      const status   = card.dataset.status;
+      const category = card.dataset.category;
+
+      let show = false;
+      if (filter === 'all')                   show = true;
+      else if (filter === status)             show = true;
+      else if (filter === category)           show = true;
+      else if (filter === 'partial' && status === 'partial') show = true;
+
+      card.style.display = show ? '' : 'none';
+    });
+
+    // Update stats
+    const visible = [...cards].filter(c => c.style.display !== 'none');
+    document.getElementById('stat-total').textContent   = visible.length;
+    document.getElementById('stat-fixed').textContent   = visible.filter(c => c.dataset.status === 'fixed').length;
+    document.getElementById('stat-partial').textContent = visible.filter(c => c.dataset.status === 'partial').length;
+    document.getElementById('stat-open').textContent    = visible.filter(c => c.dataset.status === 'open').length;
+  }
+</script>
+
+</body>
+</html>
